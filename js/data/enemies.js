@@ -41,6 +41,93 @@ export const ENEMIES = {
     ],
     reward: { type: 'relic' },
   },
+
+  // ── 1막 추가 적
+  cultist: {
+    id: 'cultist', name: '광신도', portrait: '🕯',
+    maxHp: 26, maxSp: 20, actionSlots: 2,
+    speedDice: { min: 2, max: 4 },
+    resist: { 참격: '일반', 관통: '일반', 타격: '일반', 정신: '저항', 공포: '저항' },
+    pattern: [
+      { type: '공격', min: 3, max: 5, property: '참격', name: '의식 단검' },
+      { type: '공격', min: 2, max: 4, property: '공포', name: '주문 영창' },
+      { type: '막기', min: 2, max: 4, property: '정신', name: '경건한 자세' },
+    ],
+    reward: { type: 'card', rarity: '일반' },
+  },
+
+  // ── 2막 적
+  thrall: {
+    id: 'thrall', name: '심해의 종', portrait: '🐟',
+    maxHp: 36, maxSp: 24, actionSlots: 2,
+    speedDice: { min: 3, max: 6 },
+    resist: { 참격: '저항', 관통: '일반', 타격: '취약', 정신: '일반', 공포: '저항' },
+    pattern: [
+      { type: '공격', min: 4, max: 7, property: '관통', name: '비늘 손' },
+      { type: '반격', min: 3, max: 5, property: '관통', name: '반사 신경' },
+      { type: '회피', min: 3, max: 5, property: '관통', name: '미끄럼' },
+      { type: '공격', min: 5, max: 8, property: '타격', name: '바다 일격' },
+    ],
+    reward: { type: 'card', rarity: '희귀' },
+  },
+
+  // ── 3막 적
+  spawn: {
+    id: 'spawn', name: '심연의 자손', portrait: '🦑',
+    maxHp: 48, maxSp: 30, actionSlots: 2,
+    speedDice: { min: 4, max: 7 },
+    resist: { 참격: '일반', 관통: '저항', 타격: '일반', 정신: '저항', 공포: '면역' },
+    pattern: [
+      { type: '공격', min: 5, max: 8, property: '공포', name: '망각의 손길', effects: [{ id: '떨림', value: 2 }] },
+      { type: '공격', min: 4, max: 7, property: '참격', name: '촉수' },
+      { type: '막기', min: 4, max: 6, property: '공포', name: '환각' },
+      { type: '회피', min: 4, max: 7, property: '공포', name: '비현실' },
+    ],
+    reward: { type: 'card', rarity: '희귀' },
+  },
+  shoggothLet: {
+    id: 'shoggothLet', name: '슈고스렛', portrait: '🟣',
+    maxHp: 60, maxSp: 36, actionSlots: 3,
+    speedDice: { min: 3, max: 7 },
+    resist: { 참격: '저항', 관통: '저항', 타격: '일반', 정신: '취약', 공포: '면역' },
+    pattern: [
+      { type: '공격', min: 6, max: 9, property: '타격', name: '거품' },
+      { type: '공격', min: 4, max: 6, property: '공포', name: '눈으로 응시' },
+      { type: '반격', min: 5, max: 7, property: '타격', name: '되돌림' },
+      { type: '회피', min: 4, max: 8, property: '타격', name: '액화' },
+    ],
+    reward: { type: 'relic' },
+  },
+
+  // ── 보스
+  bossTheRitualist: {
+    id: 'bossTheRitualist', name: '의식의 집전자', portrait: '🜏',
+    maxHp: 130, maxSp: 80, actionSlots: 3,
+    speedDice: { min: 5, max: 8 },
+    resist: { 참격: '일반', 관통: '저항', 타격: '저항', 정신: '면역', 공포: '면역' },
+    pattern: [
+      { type: '공격', min: 5, max: 9, property: '공포', name: '광기 주입', effects: [{ id: '떨림', value: 3 }] },
+      { type: '공격', min: 6, max: 10, property: '참격', name: '심연의 낫' },
+      { type: '막기', min: 5, max: 8, property: '공포', name: '광기의 결계' },
+      { type: '회피', min: 6, max: 9, property: '공포', name: '비실재' },
+    ],
+    reward: { type: 'relic' },
+  },
+  bossSleeperOfTheDeep: {
+    id: 'bossSleeperOfTheDeep', name: '잠든 자', portrait: '🐙',
+    maxHp: 200, maxSp: 120, actionSlots: 4,
+    speedDice: { min: 4, max: 9 },
+    resist: { 참격: '저항', 관통: '저항', 타격: '저항', 정신: '저항', 공포: '면역' },
+    pattern: [
+      { type: '공격', min: 7, max: 12, property: '타격', name: '깊은 곳의 발톱' },
+      { type: '공격', min: 6, max: 10, property: '공포', name: '꿈의 자락', effects: [{ id: '떨림', value: 4 }] },
+      { type: '공격', min: 8, max: 14, property: '관통', name: '미지의 시선' },
+      { type: '막기', min: 6, max: 10, property: '공포', name: '심해의 침묵' },
+      { type: '반격', min: 7, max: 10, property: '타격', name: '돌풍 같은 분노' },
+      { type: '회피', min: 6, max: 11, property: '공포', name: '꿈으로 미끄러짐' },
+    ],
+    reward: { type: 'relic' },
+  },
 };
 
 export function instantiateEnemy(id) {

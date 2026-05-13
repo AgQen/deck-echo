@@ -6,14 +6,14 @@
 export const CHARACTERS = {
   protagonist: {
     id: 'protagonist',
-    name: '주인공',
-    portrait: '🜂',
+    name: '조사관',
+    portrait: '🜍',  // 황 — 비밀의 학문
     maxHp: 50, maxSp: 30,
-    actionSlots: 2,             // 한 턴에 배치 가능한 카드 수
-    speedDice: { min: 4, max: 7 }, // 슬롯마다 굴리는 속도 범위
+    actionSlots: 2,
+    speedDice: { min: 4, max: 7 },
     baseMaxLight: 5,
     resist: { 참격: '일반', 관통: '일반', 타격: '일반', 정신: '일반', 공포: '일반' },
-    startingDeck: null,         // null이면 STARTER_DECK 사용
+    startingDeck: null,
   },
   scholar: {
     id: 'scholar',
@@ -22,7 +22,7 @@ export const CHARACTERS = {
     maxHp: 38, maxSp: 42,
     actionSlots: 2,
     speedDice: { min: 3, max: 6 },
-    baseMaxLight: 6,            // 정신력형 → 빛이 더 많음
+    baseMaxLight: 6,
     resist: { 참격: '취약', 관통: '일반', 타격: '일반', 정신: '저항', 공포: '저항' },
     startingDeck: null,
   },
@@ -31,7 +31,7 @@ export const CHARACTERS = {
     name: '척후',
     portrait: '🏹',
     maxHp: 44, maxSp: 28,
-    actionSlots: 3,             // 슬롯 많음 = 빠르게 여러 합
+    actionSlots: 3,
     speedDice: { min: 5, max: 8 },
     baseMaxLight: 4,
     resist: { 참격: '일반', 관통: '저항', 타격: '취약', 정신: '일반', 공포: '일반' },

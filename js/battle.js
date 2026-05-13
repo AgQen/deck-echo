@@ -27,6 +27,7 @@ import { makeRng } from './rng.js';
 import { resolveClash, rollAction, applyEvents } from './clash.js';
 import { tickStatuses, reduceDurations } from './data/statuses.js';
 import { awardXp, XP_RULES, LEVEL_BONUS_LIGHT } from './data/progression.js';
+import { fireRelicHook } from './data/relics.js';
 
 export function startBattle({ enemyIds, mapNodeId } = {}) {
   const run = state.run;
@@ -57,6 +58,8 @@ export function startBattle({ enemyIds, mapNodeId } = {}) {
   };
   const handSize = state.settings.handSize || 3;
   for (const p of players) drawCards(battle, p.id, handSize);
+  // 유물: 전투 시작 효과
+  for (const p of players) fireRelicHook(run, 'onBattleStart', battle, p);
   rollAllSpeeds(battle);
   pickEnemyActions(battle);
 
@@ -499,6 +502,10 @@ function endTurn(battle) {
   battle.turn += 1;
   for (const p of battle.players) {
     if (!p.dead) p.light = p.maxLight;
+  }
+  // 유물: 매 턴 시작 효과
+  for (const p of battle.players) {
+    if (!p.dead) fireRelicHook(state.run, 'onTurnStart', battle, p);
   }
   rollAllSpeeds(battle);
   pickEnemyActions(battle);

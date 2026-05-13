@@ -16,15 +16,19 @@
     <section class="screen active" data-screen="title">
       <div class="title-wrap">
         <h1 class="title-logo">DECK · ECHO</h1>
-        <p class="title-sub">덱빌딩 로그라이크 · 합 시스템</p>
+        <p class="title-sub">— 잠든 자의 메아리 —</p>
+        <blockquote class="title-quote">
+          "잠시 우리는 깨어 있었으나,<br/>
+          꿈은 우리 모두를 다시 거두어 갔다."
+        </blockquote>
         <div class="title-menu">
-          <button class="btn-primary" data-action="new-game">새 게임</button>
+          <button class="btn-primary" data-action="new-game">새 항해</button>
           <button class="btn-secondary" data-action="continue">이어하기</button>
           <button class="btn-secondary" data-action="setup">초기 세팅</button>
           <button class="btn-secondary" data-action="settings">설정</button>
           <button class="btn-ghost" data-action="credits">정보</button>
         </div>
-        <p class="title-foot">v0.1.0 · 초기 골격</p>
+        <p class="title-foot">v0.2.0 · 잠든 신의 곁</p>
       </div>
     </section>
 
@@ -150,6 +154,26 @@
         <h3>카드 풀</h3>
         <div class="deck-list" id="setup-pool-list"></div>
         <button class="btn-primary wide" data-action="setup-confirm">확정하고 시작</button>
+      </div>
+    </section>
+
+    <!-- 보상 -->
+    <section class="modal" data-modal="reward">
+      <header class="modal-bar">
+        <div class="modal-title">보상</div>
+      </header>
+      <div class="reward-body" id="reward-body"></div>
+    </section>
+
+    <!-- 상점 -->
+    <section class="modal" data-modal="shop">
+      <header class="modal-bar">
+        <button class="icon-btn" data-action="shop-leave">‹</button>
+        <div class="modal-title">상점</div>
+      </header>
+      <div class="shop-body" id="shop-body"></div>
+      <div class="modal-foot">
+        <button class="btn-primary wide" data-action="shop-leave">떠나기</button>
       </div>
     </section>
 

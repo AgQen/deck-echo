@@ -1,8 +1,8 @@
 // 게임 전역 상태. 단일 객체. 저장은 storage.js에서.
 import { makeRng } from './rng.js';
-import { instantiateMap } from './data/maps.js';
 import { instantiateCharacter } from './data/characters.js';
 import { STARTER_DECK } from './data/cards.js';
+import { generateAct } from './data/acts.js';
 
 export const state = {
   screen: 'title',         // 'title' | 'map' | 'battle'
@@ -15,7 +15,7 @@ export const state = {
 };
 
 // 새 런 시작
-export function startNewRun({ characterId = 'protagonist', mapId = 'prologue', seed = Date.now() } = {}) {
+export function startNewRun({ characterId = 'protagonist', seed = Date.now() } = {}) {
   const rng = makeRng(seed);
   const party = [instantiateCharacter(characterId)];
   const deck = STARTER_DECK.slice();
@@ -23,14 +23,31 @@ export function startNewRun({ characterId = 'protagonist', mapId = 'prologue', s
     seed,
     rngState: rng.seed(),
     day: 1,
-    party,                 // 플레이어 캐릭터들 (동료 합류 시 push)
-    deck,                  // 책장 (카드 id 배열)
-    relics: [],            // 유물 인벤토리
-    map: instantiateMap(mapId),
-    inBattle: null,        // 전투 중이면 battle 객체
+    act: 1,                // 1~3
+    party,
+    deck,
+    relics: [],
+    gold: 50,              // 시작 골드
+    map: generateAct(1, rng),
+    inBattle: null,
     selectedActorId: party[0].id,
   };
   return state.run;
+}
+
+// 다음 막 진입 (보스 처치 후)
+export function advanceToNextAct() {
+  if (!state.run) return;
+  state.run.act = (state.run.act || 1) + 1;
+  state.run.day += 1;
+  // 레벨/XP 초기화 (보상은 별도 부여)
+  for (const p of state.run.party) {
+    p.xp = 0;
+    p.level = 0;
+  }
+  const rng = makeRng((state.run.rngState || 0) ^ state.run.act);
+  state.run.map = generateAct(state.run.act, rng);
+  state.run.rngState = rng.seed();
 }
 
 export function endRun() { state.run = null; }

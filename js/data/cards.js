@@ -94,6 +94,96 @@ export const CARDS = {
     ],
     tags: ['소모'],
   },
+
+  // ── 유틸 카드 (배치 즉시 효과)
+  insight: {
+    id: 'insight', name: '통찰', rarity: '일반', light: 0,
+    desc: '배치 즉시 카드 2장 드로우.',
+    actions: [],
+    effects: [{ type: 'draw', value: 2 }],
+    tags: ['유틸', '드로우'],
+  },
+  deepInsight: {
+    id: 'deepInsight', name: '깊은 통찰', rarity: '희귀', light: 1,
+    desc: '배치 즉시 카드 3장 드로우.',
+    actions: [],
+    effects: [{ type: 'draw', value: 3 }],
+    tags: ['유틸', '드로우'],
+  },
+  meditation: {
+    id: 'meditation', name: '정좌', rarity: '일반', light: 0,
+    desc: '배치 즉시 빛 +2.',
+    actions: [],
+    effects: [{ type: 'light', value: 2 }],
+    tags: ['유틸', '빛'],
+  },
+  ritual: {
+    id: 'ritual', name: '의식', rarity: '희귀', light: 1,
+    desc: '배치 즉시 빛 +3, 카드 1장 드로우.',
+    actions: [],
+    effects: [{ type: 'light', value: 3 }, { type: 'draw', value: 1 }],
+    tags: ['유틸', '빛', '드로우'],
+  },
+
+  // ── 추가 공격/방어 카드 (콘텐츠 확장)
+  shadowStrike: {
+    id: 'shadowStrike', name: '암격', rarity: '희귀', light: 1,
+    desc: '어둠 속에서 단번에. 강한 단일 공격.',
+    actions: [{ type: '공격', min: 7, max: 10, property: '참격' }],
+    tags: ['근접', '참격'],
+  },
+  twinFang: {
+    id: 'twinFang', name: '쌍아', rarity: '희귀', light: 1,
+    desc: '관통의 이중 공격.',
+    actions: [
+      { type: '공격', min: 3, max: 6, property: '관통' },
+      { type: '공격', min: 3, max: 6, property: '관통' },
+    ],
+    tags: ['근접', '관통'],
+  },
+  mantraBlock: {
+    id: 'mantraBlock', name: '독경', rarity: '일반', light: 1,
+    desc: '정신을 가다듬는 막기 + 회피.',
+    actions: [
+      { type: '막기', min: 3, max: 5, property: '정신' },
+      { type: '회피', min: 3, max: 5, property: '정신' },
+    ],
+    tags: ['방어', '정신'],
+  },
+  paranoia: {
+    id: 'paranoia', name: '편집증', rarity: '희귀', light: 2,
+    desc: '상대의 정신을 흔든다. 떨림 부여.',
+    actions: [
+      { type: '공격', min: 3, max: 5, property: '공포', effects: [{ id: '떨림', value: 3, target: 'opponent' }] },
+    ],
+    tags: ['원거리', '정신'],
+  },
+  forbiddenTome: {
+    id: 'forbiddenTome', name: '금서 일별', rarity: '유물', light: 2,
+    desc: '카드 4장 드로우, 빛 +2. 한번 쓰면 사라진다.',
+    consumable: true,
+    actions: [],
+    effects: [{ type: 'draw', value: 4 }, { type: 'light', value: 2 }],
+    tags: ['소모', '유틸'],
+  },
+  // ── 더 위협적인 공격
+  greatCleave: {
+    id: 'greatCleave', name: '대거의 일섬', rarity: '희귀', light: 2,
+    desc: '강력한 참격 두 번.',
+    actions: [
+      { type: '공격', min: 5, max: 8, property: '참격' },
+      { type: '공격', min: 4, max: 6, property: '참격' },
+    ],
+    tags: ['근접', '참격'],
+  },
+  spiritGuard: {
+    id: 'spiritGuard', name: '영혼의 방벽', rarity: '희귀', light: 1,
+    desc: '강한 막기. 정신력 반격.',
+    actions: [
+      { type: '막기', min: 5, max: 8, property: '정신' },
+    ],
+    tags: ['방어', '정신'],
+  },
 };
 
 export function cardCost(card) {

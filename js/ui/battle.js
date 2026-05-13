@@ -13,8 +13,9 @@ import { saveAll } from '../storage.js';
 import { CARDS, cardCost } from '../data/cards.js';
 import { PROPERTIES } from '../data/properties.js';
 import { placeCard, removeCard, linkSlot, unlinkSlot, executeTurn } from '../battle.js';
-import { renderMap } from './map.js';
+import { renderMap, openReward } from './map.js';
 import { xpToNext, LEVEL_CAP, LEVEL_THRESHOLDS } from '../data/progression.js';
+import { RELICS } from '../data/relics.js';
 
 let selectedActorId = null;
 let selectedEnemyId = null;
@@ -632,29 +633,54 @@ function showDamagePopup(actor, amount, kind) {
 
 function endBattle(battle) {
   const run = state.run;
-  // HP/SP 결과를 파티에 반영
   for (const p of battle.players) {
     const orig = run.party.find(x => x.id === p.id);
-    if (orig) { orig.hp = p.hp; orig.sp = p.sp; }
+    if (orig) { orig.hp = p.hp; orig.sp = p.sp; orig.statuses = {}; orig.disordered = false; }
   }
   if (battle.victory) {
-    toast('승리!', 1800);
     run.map.cleared[battle.mapNodeId] = true;
-  } else {
-    toast('패배… 진행이 종료됩니다', 2400);
-  }
-  run.inBattle = null;
-  saveAll();
-  setTimeout(() => {
-    if (battle.victory) {
+    run.inBattle = null;
+    saveAll();
+    // 보상 산정
+    const node = run.map.nodes[battle.mapNodeId];
+    const isBoss = node?.type === 'boss';
+    const isElite = node?.type === 'elite';
+    const isNormal = node?.type === 'battle';
+    let gold = 0;
+    if (isNormal) gold = 18 + Math.floor(battle.rng() * 12);
+    if (isElite) gold = 40 + Math.floor(battle.rng() * 20);
+    if (isBoss) gold = 80 + Math.floor(battle.rng() * 30);
+    // 카드 선택지
+    let cards = [];
+    if (isNormal || isElite || isBoss) {
+      const pool = Object.values(CARDS).filter(c => c.rarity === '일반' || c.rarity === '희귀');
+      const choose3 = [];
+      const used = new Set();
+      while (choose3.length < 3 && used.size < pool.length) {
+        const c = pool[Math.floor(battle.rng() * pool.length)];
+        if (!used.has(c.id)) { used.add(c.id); choose3.push(c.id); }
+      }
+      cards = choose3;
+    }
+    // 보스/엘리트는 유물 보상
+    let relic = null;
+    if (isBoss || isElite) {
+      const rest = Object.values(RELICS).filter(r => !(run.relics || []).includes(r.id));
+      const pool = rest.filter(r => isBoss ? true : r.rarity !== '유물');
+      if (pool.length) relic = pool[Math.floor(battle.rng() * pool.length)].id;
+    }
+    setTimeout(() => {
       showScreen('map');
       renderMap();
-    } else {
-      // 사망 → 초기화
-      // (영구 진행 시스템은 추후)
+      openReward({ gold, cards, relic, isBoss });
+    }, 600);
+  } else {
+    toast('패배… 진행이 종료됩니다', 2400);
+    run.inBattle = null;
+    setTimeout(() => {
       localStorage.removeItem('deckEcho.save');
       state.run = null;
       showScreen('title');
-    }
-  }, 900);
+    }, 1600);
+  }
 }
