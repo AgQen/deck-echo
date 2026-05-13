@@ -276,7 +276,7 @@ function clearHighlight() {
   $$('.card.locked-target').forEach(c => c.classList.remove('locked-target'));
 }
 
-// 합 라인 그리기 (현재 selected actor 기준)
+// 계획 단계 라인 그리기. 합은 노란 곡선, 일방공격은 빨간 점선 화살표.
 function drawClashLines() {
   const svg = $('#clash-svg');
   if (!svg) return;
@@ -287,27 +287,111 @@ function drawClashLines() {
   const rect = svg.getBoundingClientRect();
   svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
 
-  function centerOf(el) {
+  // 화살표 마커 정의
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  defs.innerHTML = `
+    <marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#e06060" />
+    </marker>
+  `;
+  svg.appendChild(defs);
+
+  const centerOf = (el) => {
+    if (!el) return null;
     const r = el.getBoundingClientRect();
     return { x: r.left + r.width / 2 - rect.left, y: r.top + r.height / 2 - rect.top };
-  }
+  };
 
+  // 어떤 액션들이 합으로 연결되어 있는지 표시용 셋 — 미연결 화살표에서 제외하기 위함
+  const linkedKey = new Set();
+  const k = (side, actorId, slotIdx, actionIdx) => `${side}:${actorId}:${slotIdx}:${actionIdx}`;
+
+  // ── 1) 양방향 합 라인 (노란 곡선)
   for (const p of battle.players) {
     for (let si = 0; si < p.slots.length; si++) {
       const slot = p.slots[si];
       if (!slot.card) continue;
       for (const pl of slot.plan) {
         const tgt = pl.target;
-        // src DOM
+        linkedKey.add(k('player', p.id, si, pl.actionIdx));
+        linkedKey.add(k(tgt.side, tgt.actorId, tgt.slotIdx, tgt.actionIdx));
+        if (p.id !== selectedActorId) continue;
+        if (tgt.actorId !== selectedEnemyId) continue;
         const srcEl = document.querySelector(`#player-cards .card-slot:nth-child(${si + 1}) .card-action[data-action-idx="${pl.actionIdx}"]`);
         const dstEl = document.querySelector(`#enemy-cards .card-slot:nth-child(${tgt.slotIdx + 1}) .card-action[data-action-idx="${tgt.actionIdx}"]`);
-        if (!srcEl || !dstEl) continue;
-        const a = centerOf(srcEl);
-        const b = centerOf(dstEl);
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const a = centerOf(srcEl), b = centerOf(dstEl);
+        if (!a || !b) continue;
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
         const mx = (a.x + b.x) / 2;
-        line.setAttribute('d', `M ${a.x} ${a.y} Q ${mx} ${(a.y + b.y) / 2 - 30}, ${b.x} ${b.y}`);
-        line.setAttribute('class', 'clash-line locked');
+        path.setAttribute('d', `M ${a.x} ${a.y} Q ${mx} ${(a.y + b.y) / 2}, ${b.x} ${b.y}`);
+        path.setAttribute('class', 'clash-line');
+        svg.appendChild(path);
+      }
+    }
+  }
+  // 적측 plan에 등록된 합도 표시 (적이 player를 향해 잠근 경우는 별로 없지만 안전망)
+  for (const e of battle.enemies) {
+    for (let si = 0; si < e.slots.length; si++) {
+      const slot = e.slots[si];
+      if (!slot.card) continue;
+      for (const pl of slot.plan) {
+        if (pl.target.slotIdx == null) continue;
+        linkedKey.add(k('enemy', e.id, si, pl.actionIdx));
+        linkedKey.add(k(pl.target.side, pl.target.actorId, pl.target.slotIdx, pl.target.actionIdx));
+      }
+    }
+  }
+
+  // ── 2) 미연결 공격/반격 = 빨간 화살표 (선택된 캐릭터/적 한정)
+  const firstAliveEnemy = battle.enemies.find(en => !en.dead);
+  const firstAlivePlayer = battle.players.find(pl => !pl.dead);
+
+  // 플레이어 → 적 아바타
+  const selPlayer = battle.players.find(p => p.id === selectedActorId);
+  if (selPlayer && firstAliveEnemy) {
+    for (let si = 0; si < selPlayer.slots.length; si++) {
+      const slot = selPlayer.slots[si];
+      if (!slot.card) continue;
+      for (let ai = 0; ai < slot.card.actions.length; ai++) {
+        const act = slot.card.actions[ai];
+        if (act.type !== '공격' && act.type !== '반격') continue;
+        if (linkedKey.has(k('player', selPlayer.id, si, ai))) continue;
+        const srcEl = document.querySelector(`#player-cards .card-slot:nth-child(${si + 1}) .card-action[data-action-idx="${ai}"]`);
+        const enemyIdx = battle.enemies.findIndex(en => en.id === firstAliveEnemy.id);
+        const dstEl = document.querySelectorAll('#enemy-actors .actor')[enemyIdx];
+        const a = centerOf(srcEl), b = centerOf(dstEl);
+        if (!a || !b) continue;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+        line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+        line.setAttribute('class', 'oneway-line');
+        line.setAttribute('marker-end', 'url(#arr-red)');
+        svg.appendChild(line);
+      }
+    }
+  }
+
+  // 선택된 적 → 플레이어 아바타
+  const selEnemy = battle.enemies.find(en => en.id === selectedEnemyId);
+  if (selEnemy && firstAlivePlayer) {
+    for (let si = 0; si < selEnemy.slots.length; si++) {
+      const slot = selEnemy.slots[si];
+      if (!slot.card) continue;
+      for (let ai = 0; ai < slot.card.actions.length; ai++) {
+        const act = slot.card.actions[ai];
+        if (act.type !== '공격' && act.type !== '반격') continue;
+        if (linkedKey.has(k('enemy', selEnemy.id, si, ai))) continue;
+        const srcEl = document.querySelector(`#enemy-cards .card-slot:nth-child(${si + 1}) .card-action[data-action-idx="${ai}"]`);
+        const playerIdx = battle.players.findIndex(pl => pl.id === firstAlivePlayer.id);
+        const dstEl = document.querySelectorAll('#player-actors .actor')[playerIdx];
+        const a = centerOf(srcEl), b = centerOf(dstEl);
+        if (!a || !b) continue;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+        line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+        line.setAttribute('class', 'oneway-line');
+        line.setAttribute('marker-end', 'url(#arr-red)');
         svg.appendChild(line);
       }
     }
