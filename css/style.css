@@ -170,26 +170,37 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 }
 .card-slot {
   position: relative; flex: 0 0 auto;
-  width: 84px; height: 116px;
+  width: 92px; height: 124px;
   background: #15151a; border: 1px dashed #34343c; border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   scroll-snap-align: start;
 }
-.card-slot .slot-speed {
-  position: absolute; top: 6px; left: 8px; color: #4a4a55; font-size: 22px; font-weight: 700;
-}
-.card-slot.empty .slot-plus { font-size: 36px; color: #4a4a55; }
+.card-slot.empty .slot-plus { font-size: 38px; color: #4a4a55; line-height: 1; }
+.card-slot.empty .slot-speed-empty { font-size: 11px; color: #6a6760; }
 .card-slot.filled { border-style: solid; border-color: #4a4a55; }
 
 .card {
-  position: absolute; inset: 0; padding: 6px;
+  position: absolute; inset: 0; padding: 24px 6px 18px;
   display: flex; flex-direction: column; gap: 4px;
   background: linear-gradient(180deg, #2a221a, #1a1414);
   border-radius: 10px; border: 1px solid #5a4a30;
   font-size: 11px;
 }
 .card.consumable { background: linear-gradient(180deg, #2a141a, #1a0e10); border-color: #6a3030; }
-.card-name { font-weight: 600; color: #f0d9a5; font-size: 12px; line-height: 1.1; }
+.card-name { font-weight: 600; color: #f0d9a5; font-size: 12px; line-height: 1.1; text-align: center; }
+.card-remove-btn {
+  position: absolute; top: 3px; right: 3px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(80,30,30,0.6); border: 1px solid rgba(192,80,80,0.7);
+  color: #ffd0d0; font-size: 11px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 3; padding: 0;
+}
+.card-remove-btn:active { background: rgba(120,40,40,0.9); }
+.card-speed-tag {
+  position: absolute; bottom: 3px; right: 5px;
+  font-size: 10px; color: #d8a957; font-weight: 700; letter-spacing: 0.02em;
+}
 .card-actions { display: flex; flex-direction: column; gap: 2px; }
 .card-action {
   display: flex; align-items: center; gap: 4px; font-size: 10px;
@@ -201,14 +212,13 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 .card-action[data-type="회피"] { background: rgba(128,192,128,0.25); }
 .card-roll { font-weight: 700; font-variant-numeric: tabular-nums; }
 .card-prop { font-size: 9px; opacity: 0.8; }
-.card-speed { position: absolute; bottom: 4px; right: 6px; color: #d8a957; font-size: 11px; font-weight: 700; }
 .card-cost {
-  position: absolute; top: 4px; left: 4px;
+  position: absolute; top: 3px; left: 3px;
   font-size: 10px; font-weight: 700;
   padding: 2px 5px; border-radius: 6px;
-  background: rgba(240,192,96,0.18); color: #f0d9a5;
-  border: 1px solid rgba(240,192,96,0.5);
-  z-index: 2;
+  background: rgba(240,192,96,0.2); color: #f0d9a5;
+  border: 1px solid rgba(240,192,96,0.6);
+  z-index: 3;
 }
 .card-pick .card-cost { top: 6px; left: 6px; }
 .card-pick.disabled { filter: grayscale(1) brightness(0.6); pointer-events: none; }
@@ -286,9 +296,80 @@ hr { width: 100%; border: none; border-top: 1px solid #2a2a32; margin: 8px 0; }
   font-size: 13px;
 }
 
-/* ===== 합 라인 SVG ===== */
-.clash-line { stroke: #d8a957; stroke-width: 2; fill: none; stroke-dasharray: 4 4; }
-.clash-line.locked { stroke-dasharray: none; stroke-width: 3; }
+/* ===== 합 / 일방공격 라인 ===== */
+.clash-line {
+  stroke: #f0c860; stroke-width: 3; fill: none;
+  filter: drop-shadow(0 0 4px rgba(240,200,96,0.5));
+}
+.oneway-line {
+  stroke: #e06060; stroke-width: 2.5; fill: none;
+  stroke-dasharray: 6 4;
+  filter: drop-shadow(0 0 3px rgba(224,96,96,0.4));
+}
+
+/* ===== 합 무대 (중앙 애니메이션) ===== */
+.arena {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%,-50%);
+  display: flex; align-items: center; justify-content: center; gap: 16px;
+  pointer-events: none;
+  background: rgba(10,10,12,0.85);
+  padding: 14px 22px;
+  border-radius: 12px;
+  border: 1px solid #34343c;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+  z-index: 20;
+  min-width: 80%;
+  max-width: 96%;
+  justify-content: space-between;
+}
+.arena-side { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 70px; }
+.arena-actor { font-size: 11px; color: #b8b4a6; letter-spacing: 0.04em; }
+.arena-action { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: rgba(255,255,255,0.05); }
+.arena-num {
+  font-size: 42px; font-weight: 800;
+  font-family: 'Courier New', 'D2Coding', monospace;
+  color: #f0d9a5;
+  min-width: 56px; text-align: center;
+  line-height: 1; transition: transform 0.2s, color 0.2s, text-shadow 0.2s;
+}
+.arena-num.winner { color: #b0d050; text-shadow: 0 0 14px #b0d050; transform: scale(1.18); }
+.arena-num.loser  { color: #6a6a6a; }
+.arena-vs { font-size: 14px; color: #9a978c; letter-spacing: 0.18em; }
+.arena-mode {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  font-size: 10px; letter-spacing: 0.18em;
+  padding: 2px 8px; border-radius: 4px;
+  background: #14141a; border: 1px solid #34343c; color: #b8b4a6;
+}
+.arena-mode.clash { color: #f0c860; border-color: rgba(240,200,96,0.6); }
+.arena-mode.oneway { color: #e06060; border-color: rgba(224,96,96,0.6); }
+
+/* 데미지 팝업 (행위자 위에 띄움) */
+.dmg-popup {
+  position: absolute; pointer-events: none;
+  font-size: 20px; font-weight: 800;
+  text-shadow: 0 0 6px rgba(0,0,0,0.8);
+  animation: dmg-rise 0.9s ease-out forwards;
+  z-index: 30;
+}
+.dmg-popup.hp { color: #ff7060; }
+.dmg-popup.sp { color: #80a0ff; }
+.dmg-popup.miss { color: #b8b4a6; }
+@keyframes dmg-rise {
+  0%   { opacity: 0; transform: translate(-50%, 8px); }
+  20%  { opacity: 1; transform: translate(-50%, -4px); }
+  100% { opacity: 0; transform: translate(-50%, -34px); }
+}
+
+/* 행위자 흔들기 */
+@keyframes hit-shake {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+.actor.hit { animation: hit-shake 0.32s; }
 
 /* ===== 토스트 ===== */
 .toast {

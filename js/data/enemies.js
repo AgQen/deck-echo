@@ -7,7 +7,7 @@ export const ENEMIES = {
   husk: {
     id: 'husk', name: '비틀거리는 잔재', portrait: '👁',
     maxHp: 22, maxSp: 18, actionSlots: 1,
-    speedDice: { min: 2, max: 5 },
+    speedDice: { min: 1, max: 3 },     // 초반 적은 느리게 — 플레이어가 합을 걸기 쉽도록
     resist: { 참격: '일반', 관통: '저항', 타격: '취약', 정신: '취약', 공포: '취약' },
     // 자체 패턴: id 또는 카드 정의를 직접
     pattern: [

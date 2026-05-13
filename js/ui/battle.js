@@ -153,24 +153,44 @@ function renderCardRail(sel, actor, side) {
   for (let i = 0; i < actor.slots.length; i++) {
     const slot = actor.slots[i];
     const wrap = el('div', { class: 'card-slot' + (slot.card ? ' filled' : ' empty') });
-    wrap.appendChild(el('div', { class: 'slot-speed', text: slot.speed ?? '' }));
     if (slot.card) {
-      wrap.appendChild(renderCardEl(slot.card, side, actor.id, i));
-    } else if (side === 'player') {
+      // 카드 있을 때는 카드 자체에서 속도 표시
+      wrap.appendChild(renderCardEl(slot.card, side, actor.id, i, slot.speed));
+    } else {
+      // 빈 슬롯: 큰 + 와 슬롯 속도 라벨
       wrap.appendChild(el('div', { class: 'slot-plus', text: '+' }));
-      wrap.addEventListener('click', () => openCardPicker(actor.id, i));
+      wrap.appendChild(el('div', { class: 'slot-speed-empty', text: `속도 ${slot.speed ?? '?'}` }));
+      if (side === 'player') {
+        wrap.addEventListener('click', () => openCardPicker(actor.id, i));
+      }
     }
     rail.appendChild(wrap);
   }
 }
 
-function renderCardEl(card, side, actorId, slotIdx) {
+function renderCardEl(card, side, actorId, slotIdx, slotSpeed) {
   const c = el('div', { class: 'card' + (card.consumable ? ' consumable' : '') });
-  // 빛 비용 칩 (적 카드는 비용 표시 안 함)
+
+  // 좌상단: 빛 비용 (플레이어만)
   if (side === 'player' && card.light != null) {
     c.appendChild(el('div', { class: 'card-cost', text: '◆' + card.light }));
   }
+
+  // 우상단: ✕ 제거 (플레이어만)
+  if (side === 'player') {
+    const rb = el('button', { class: 'card-remove-btn', text: '✕' });
+    rb.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      removeCard(state.run.inBattle, actorId, slotIdx);
+      renderBattle();
+    });
+    c.appendChild(rb);
+  }
+
+  // 카드 이름 (양 옆 비용/제거 버튼 공간 확보 위해 padded)
   c.appendChild(el('div', { class: 'card-name', text: card.name }));
+
+  // 액션 칩들
   const list = el('div', { class: 'card-actions' });
   for (let i = 0; i < card.actions.length; i++) {
     const a = card.actions[i];
@@ -186,26 +206,22 @@ function renderCardEl(card, side, actorId, slotIdx) {
   }
   c.appendChild(list);
 
-  // 우상단 확대 버튼
-  const zb = el('button', { class: 'card-zoom-btn', text: '!' });
-  zb.addEventListener('click', (ev) => { ev.stopPropagation(); openCardZoom(card); });
-  c.appendChild(zb);
-
-  // 우측 하단 슬롯 속도 표시는 이미 slot에 있음
-  // 카드 자체 클릭 → 카드 선택(추후 손에 카드 변경)
-  if (side === 'player') {
-    let pressTimer = null;
-    c.addEventListener('pointerdown', () => {
-      pressTimer = setTimeout(() => {
-        if (confirm('이 카드를 손으로 되돌릴까요?')) {
-          removeCard(state.run.inBattle, actorId, slotIdx);
-          renderBattle();
-        }
-      }, 600);
-    });
-    c.addEventListener('pointerup', () => clearTimeout(pressTimer));
-    c.addEventListener('pointerleave', () => clearTimeout(pressTimer));
+  // 우하단: 슬롯 속도 (작게)
+  if (slotSpeed != null) {
+    c.appendChild(el('div', { class: 'card-speed-tag', text: '⚡' + slotSpeed }));
   }
+
+  // 카드 본체 길게 누르기 = 확대 보기 (액션 칩/제거 버튼은 제외)
+  let pressTimer = null;
+  const onDown = (ev) => {
+    if (ev.target.closest('.card-action, .card-remove-btn')) return;
+    pressTimer = setTimeout(() => openCardZoom(card), 450);
+  };
+  const cancel = () => clearTimeout(pressTimer);
+  c.addEventListener('pointerdown', onDown);
+  c.addEventListener('pointerup', cancel);
+  c.addEventListener('pointerleave', cancel);
+  c.addEventListener('pointercancel', cancel);
   return c;
 }
 
