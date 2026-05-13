@@ -34,7 +34,3 @@ export function startNewRun({ characterId = 'protagonist', mapId = 'prologue', s
 }
 
 export function endRun() { state.run = null; }
-
-export function hasSave() {
-  try { return !!localStorage.getItem('deckEcho.save'); } catch { return false; }
-}

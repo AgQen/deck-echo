@@ -1,6 +1,6 @@
 import { $, showScreen, openModal, toast } from './common.js';
-import { hasSave, startNewRun, state } from '../state.js';
-import { loadRun, clearRun } from '../storage.js';
+import { startNewRun, state } from '../state.js';
+import { hasSave, loadRun, clearRun } from '../storage.js';
 import { renderMap } from './map.js';
 
 export function bindTitle() {

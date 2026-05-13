@@ -31,3 +31,7 @@ export function clearRun() {
   try { localStorage.removeItem(KEY); } catch {}
   state.run = null;
 }
+
+export function hasSave() {
+  try { return !!localStorage.getItem(KEY); } catch { return false; }
+}
