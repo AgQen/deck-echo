@@ -229,7 +229,14 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
   display: flex; align-items: center; justify-content: center;
   font-size: 12px;
 }
-.card.locked-target { box-shadow: 0 0 0 2px #d8a957, 0 0 12px rgba(216,169,87,0.5); }
+.card.link-source {
+  box-shadow: 0 0 0 2px #f0c860, 0 0 16px rgba(240,200,96,0.65);
+  animation: link-pulse 1.0s ease-in-out infinite;
+}
+@keyframes link-pulse {
+  0%,100% { box-shadow: 0 0 0 2px #f0c860, 0 0 12px rgba(240,200,96,0.5); }
+  50% { box-shadow: 0 0 0 3px #f0c860, 0 0 22px rgba(240,200,96,0.9); }
+}
 .card.dragging { z-index: 100; opacity: 0.9; transform: scale(1.05); }
 
 .enemy-rail .card-slot { background: #1a1518; border-color: #4a3030; }

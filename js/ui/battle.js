@@ -12,16 +12,15 @@ import { state } from '../state.js';
 import { saveAll } from '../storage.js';
 import { CARDS, cardCost } from '../data/cards.js';
 import { PROPERTIES } from '../data/properties.js';
-import { placeCard, removeCard, linkAction, executeTurn } from '../battle.js';
+import { placeCard, removeCard, linkSlot, unlinkSlot, executeTurn } from '../battle.js';
 import { renderMap } from './map.js';
 import { xpToNext, LEVEL_CAP, LEVEL_THRESHOLDS } from '../data/progression.js';
 
-let selectedSide = 'player';
 let selectedActorId = null;
 let selectedEnemyId = null;
 
-// 합 연결 모드 상태
-let linkMode = null; // { actorId, slotIdx, actionIdx, side: 'player' }
+// 합 연결 모드: 내 슬롯 하나 선택 후 적 슬롯 클릭으로 연결
+let linkMode = null; // { side: 'player', actorId, slotIdx }
 
 export function bindBattle() {
   document.querySelectorAll('[data-screen="battle"] [data-action]').forEach(btn => {
@@ -182,15 +181,16 @@ function renderCardEl(card, side, actorId, slotIdx, slotSpeed) {
     rb.addEventListener('click', (ev) => {
       ev.stopPropagation();
       removeCard(state.run.inBattle, actorId, slotIdx);
+      linkMode = null;
       renderBattle();
     });
     c.appendChild(rb);
   }
 
-  // 카드 이름 (양 옆 비용/제거 버튼 공간 확보 위해 padded)
+  // 카드 이름
   c.appendChild(el('div', { class: 'card-name', text: card.name }));
 
-  // 액션 칩들
+  // 액션 칩들 (정보용 — 클릭은 카드 본체로 받음)
   const list = el('div', { class: 'card-actions' });
   for (let i = 0; i < card.actions.length; i++) {
     const a = card.actions[i];
@@ -198,85 +198,84 @@ function renderCardEl(card, side, actorId, slotIdx, slotSpeed) {
     ae.innerHTML = `<span>${a.type}</span><span class="card-roll">${a.min}-${a.max}</span>`;
     if (a.property) ae.appendChild(el('span', { class: 'card-prop', text: a.property }));
     ae.dataset.actionIdx = String(i);
-    ae.addEventListener('click', (ev) => {
-      ev.stopPropagation();
-      onActionClick({ side, actorId, slotIdx, actionIdx: i });
-    });
     list.appendChild(ae);
   }
   c.appendChild(list);
 
-  // 우하단: 슬롯 속도 (작게)
+  // 우하단: 슬롯 속도
   if (slotSpeed != null) {
     c.appendChild(el('div', { class: 'card-speed-tag', text: '⚡' + slotSpeed }));
   }
 
-  // 카드 본체 길게 누르기 = 확대 보기 (액션 칩/제거 버튼은 제외)
+  // 링크 모드 시각화 (선택된 자기 슬롯)
+  if (linkMode && linkMode.side === side && linkMode.actorId === actorId && linkMode.slotIdx === slotIdx) {
+    c.classList.add('link-source');
+  }
+
+  // 카드 클릭 = 합 연결 시도. 길게 누르기 = 확대.
   let pressTimer = null;
+  let longPressFired = false;
   const onDown = (ev) => {
-    if (ev.target.closest('.card-action, .card-remove-btn')) return;
-    pressTimer = setTimeout(() => openCardZoom(card), 450);
+    if (ev.target.closest('.card-remove-btn')) return;
+    longPressFired = false;
+    pressTimer = setTimeout(() => {
+      longPressFired = true;
+      openCardZoom(card);
+    }, 480);
+  };
+  const onUp = (ev) => {
+    clearTimeout(pressTimer);
+    if (longPressFired) return;
+    if (ev.target.closest('.card-remove-btn')) return;
+    onCardClick({ side, actorId, slotIdx });
   };
   const cancel = () => clearTimeout(pressTimer);
   c.addEventListener('pointerdown', onDown);
-  c.addEventListener('pointerup', cancel);
+  c.addEventListener('pointerup', onUp);
   c.addEventListener('pointerleave', cancel);
   c.addEventListener('pointercancel', cancel);
   return c;
 }
 
-// 액션 클릭 — 연결 모드 시작/종료
-function onActionClick(ref) {
-  const battle = state.run.inBattle;
+// 카드 클릭: 내 카드면 링크 시작/취소, 적 카드면 링크 완성
+function onCardClick(ref) {
+  const battle = state.run?.inBattle;
   if (!battle) return;
-  if (!linkMode) {
-    if (ref.side !== 'player') {
-      // 적 액션을 먼저 누른 경우는 아무 동작 없음 — 플레이어가 자기 카드로 시작해야 함
+  if (ref.side === 'player') {
+    // 자기 카드 다시 클릭 → 링크 모드 취소 (이미 링크 되어 있다면 풀기)
+    if (linkMode && linkMode.actorId === ref.actorId && linkMode.slotIdx === ref.slotIdx) {
+      unlinkSlot(battle, { side: 'player', actorId: ref.actorId, slotIdx: ref.slotIdx });
+      linkMode = null;
+      renderBattle();
       return;
     }
     linkMode = ref;
-    haptic(10);
-    toast('합 대상을 선택하세요');
-    highlightLinkable(ref);
+    haptic(8);
+    toast('합칠 적 카드를 누르세요 (자기 카드 다시 누르면 취소)');
+    renderBattle();
   } else {
-    // 같은 카드/액션 재클릭 → 취소
-    if (linkMode.side === ref.side && linkMode.actorId === ref.actorId && linkMode.slotIdx === ref.slotIdx && linkMode.actionIdx === ref.actionIdx) {
-      linkMode = null; clearHighlight(); return;
+    // 적 카드 클릭 → 링크 시도
+    if (!linkMode) {
+      toast('먼저 내 카드를 누르세요');
+      return;
     }
-    if (ref.side === linkMode.side) {
-      // 같은 편을 누르면 연결 시작점 변경
-      linkMode = ref; highlightLinkable(ref); return;
+    const res = linkSlot(battle, linkMode, { side: ref.side, actorId: ref.actorId, slotIdx: ref.slotIdx });
+    if (!res.ok) {
+      if (res.reason === 'too_slow') toast('속도가 부족해서 연결 불가 (상대보다 빨라야 함)');
+      else if (res.reason === 'no_slot') toast('연결할 카드가 없습니다');
+      else if (res.reason === 'same_side') toast('같은 편에는 연결 불가');
+      else toast('연결 불가');
+      return;
     }
-    // 시도
-    const ok = linkAction(battle, linkMode, ref);
-    if (!ok) toast('속도가 부족해서 연결 불가');
     linkMode = null;
-    clearHighlight();
     renderBattle();
   }
 }
 
-function highlightLinkable(ref) {
-  clearHighlight();
-  const battle = state.run.inBattle;
-  const srcActor = (ref.side === 'player' ? battle.players : battle.enemies).find(a => a.id === ref.actorId);
-  const srcSpeed = srcActor.slots[ref.slotIdx]?.speed ?? 0;
-  const targets = ref.side === 'player' ? battle.enemies : battle.players;
-  for (const tgt of targets) {
-    for (let si = 0; si < tgt.slots.length; si++) {
-      const ts = tgt.slots[si];
-      if (!ts.card || ts.speed > srcSpeed) continue;
-      // DOM에서 해당 액션들에 강조
-      // (현재 단순 구현: 대상 카드 전체에 표시)
-      // 추후 더 정밀하게.
-    }
-  }
-}
-function clearHighlight() {
-  $$('.card.locked-target').forEach(c => c.classList.remove('locked-target'));
-}
 
-// 계획 단계 라인 그리기. 합은 노란 곡선, 일방공격은 빨간 점선 화살표.
+// 계획 단계 라인 그리기.
+//   - linkedTo: 슬롯-슬롯 노란 곡선
+//   - 미연결 공격 카드: 가장 왼쪽 살아있는 상대 아바타로 빨간 점선 화살표
 function drawClashLines() {
   const svg = $('#clash-svg');
   if (!svg) return;
@@ -287,7 +286,6 @@ function drawClashLines() {
   const rect = svg.getBoundingClientRect();
   svg.setAttribute('viewBox', `0 0 ${rect.width} ${rect.height}`);
 
-  // 화살표 마커 정의
   const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
   defs.innerHTML = `
     <marker id="arr-red" viewBox="0 0 10 10" refX="9" refY="5"
@@ -303,97 +301,81 @@ function drawClashLines() {
     return { x: r.left + r.width / 2 - rect.left, y: r.top + r.height / 2 - rect.top };
   };
 
-  // 어떤 액션들이 합으로 연결되어 있는지 표시용 셋 — 미연결 화살표에서 제외하기 위함
-  const linkedKey = new Set();
-  const k = (side, actorId, slotIdx, actionIdx) => `${side}:${actorId}:${slotIdx}:${actionIdx}`;
-
-  // ── 1) 양방향 합 라인 (노란 곡선)
-  for (const p of battle.players) {
-    for (let si = 0; si < p.slots.length; si++) {
-      const slot = p.slots[si];
-      if (!slot.card) continue;
-      for (const pl of slot.plan) {
-        const tgt = pl.target;
-        linkedKey.add(k('player', p.id, si, pl.actionIdx));
-        linkedKey.add(k(tgt.side, tgt.actorId, tgt.slotIdx, tgt.actionIdx));
-        if (p.id !== selectedActorId) continue;
-        if (tgt.actorId !== selectedEnemyId) continue;
-        const srcEl = document.querySelector(`#player-cards .card-slot:nth-child(${si + 1}) .card-action[data-action-idx="${pl.actionIdx}"]`);
-        const dstEl = document.querySelector(`#enemy-cards .card-slot:nth-child(${tgt.slotIdx + 1}) .card-action[data-action-idx="${tgt.actionIdx}"]`);
-        const a = centerOf(srcEl), b = centerOf(dstEl);
-        if (!a || !b) continue;
-        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-        const mx = (a.x + b.x) / 2;
-        path.setAttribute('d', `M ${a.x} ${a.y} Q ${mx} ${(a.y + b.y) / 2}, ${b.x} ${b.y}`);
-        path.setAttribute('class', 'clash-line');
-        svg.appendChild(path);
-      }
-    }
-  }
-  // 적측 plan에 등록된 합도 표시 (적이 player를 향해 잠근 경우는 별로 없지만 안전망)
-  for (const e of battle.enemies) {
-    for (let si = 0; si < e.slots.length; si++) {
-      const slot = e.slots[si];
-      if (!slot.card) continue;
-      for (const pl of slot.plan) {
-        if (pl.target.slotIdx == null) continue;
-        linkedKey.add(k('enemy', e.id, si, pl.actionIdx));
-        linkedKey.add(k(pl.target.side, pl.target.actorId, pl.target.slotIdx, pl.target.actionIdx));
-      }
-    }
+  function slotEl(side, slotIdx) {
+    const sel = side === 'player' ? '#player-cards' : '#enemy-cards';
+    return document.querySelector(`${sel} .card-slot:nth-child(${slotIdx + 1})`);
   }
 
-  // ── 2) 미연결 공격/반격 = 빨간 화살표 (선택된 캐릭터/적 한정)
-  const firstAliveEnemy = battle.enemies.find(en => !en.dead);
-  const firstAlivePlayer = battle.players.find(pl => !pl.dead);
+  // ── 1) 노란 합 곡선 (slot → slot)
+  const players = battle.players;
+  const enemies = battle.enemies;
+  const selPlayer = players.find(p => p.id === selectedActorId);
+  const selEnemy = enemies.find(e => e.id === selectedEnemyId);
 
-  // 플레이어 → 적 아바타
-  const selPlayer = battle.players.find(p => p.id === selectedActorId);
-  if (selPlayer && firstAliveEnemy) {
+  function drawClashCurve(srcSide, srcSlotIdx, dstSide, dstSlotIdx) {
+    const srcEl = slotEl(srcSide, srcSlotIdx);
+    const dstEl = slotEl(dstSide, dstSlotIdx);
+    const a = centerOf(srcEl), b = centerOf(dstEl);
+    if (!a || !b) return;
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const mx = (a.x + b.x) / 2;
+    path.setAttribute('d', `M ${a.x} ${a.y} Q ${mx} ${(a.y + b.y) / 2}, ${b.x} ${b.y}`);
+    path.setAttribute('class', 'clash-line');
+    svg.appendChild(path);
+  }
+
+  if (selPlayer) {
     for (let si = 0; si < selPlayer.slots.length; si++) {
       const slot = selPlayer.slots[si];
-      if (!slot.card) continue;
-      for (let ai = 0; ai < slot.card.actions.length; ai++) {
-        const act = slot.card.actions[ai];
-        if (act.type !== '공격' && act.type !== '반격') continue;
-        if (linkedKey.has(k('player', selPlayer.id, si, ai))) continue;
-        const srcEl = document.querySelector(`#player-cards .card-slot:nth-child(${si + 1}) .card-action[data-action-idx="${ai}"]`);
-        const enemyIdx = battle.enemies.findIndex(en => en.id === firstAliveEnemy.id);
-        const dstEl = document.querySelectorAll('#enemy-actors .actor')[enemyIdx];
-        const a = centerOf(srcEl), b = centerOf(dstEl);
-        if (!a || !b) continue;
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
-        line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
-        line.setAttribute('class', 'oneway-line');
-        line.setAttribute('marker-end', 'url(#arr-red)');
-        svg.appendChild(line);
-      }
+      if (!slot.card || !slot.linkedTo) continue;
+      if (slot.linkedTo.actorId !== selectedEnemyId) continue;
+      drawClashCurve('player', si, 'enemy', slot.linkedTo.slotIdx);
+    }
+  }
+  if (selEnemy) {
+    for (let si = 0; si < selEnemy.slots.length; si++) {
+      const slot = selEnemy.slots[si];
+      if (!slot.card || !slot.linkedTo) continue;
+      if (slot.linkedTo.actorId !== selectedActorId) continue;
+      drawClashCurve('enemy', si, 'player', slot.linkedTo.slotIdx);
     }
   }
 
-  // 선택된 적 → 플레이어 아바타
-  const selEnemy = battle.enemies.find(en => en.id === selectedEnemyId);
-  if (selEnemy && firstAlivePlayer) {
+  // ── 2) 빨간 단방향 화살표 (미연결 공격이 가장 왼쪽 상대로 향함)
+  const firstEnemy = enemies.find(e => !e.dead);
+  const firstPlayer = players.find(p => !p.dead);
+
+  function drawOnewayArrow(srcEl, dstEl) {
+    const a = centerOf(srcEl), b = centerOf(dstEl);
+    if (!a || !b) return;
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
+    line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
+    line.setAttribute('class', 'oneway-line');
+    line.setAttribute('marker-end', 'url(#arr-red)');
+    svg.appendChild(line);
+  }
+
+  if (selPlayer && firstEnemy) {
+    for (let si = 0; si < selPlayer.slots.length; si++) {
+      const slot = selPlayer.slots[si];
+      if (!slot.card || slot.linkedTo) continue;
+      const hasAttack = slot.card.actions.some(a => a.type === '공격');
+      if (!hasAttack) continue;
+      const enemyIdx = enemies.findIndex(e => e.id === firstEnemy.id);
+      const dstEl = document.querySelectorAll('#enemy-actors .actor')[enemyIdx];
+      drawOnewayArrow(slotEl('player', si), dstEl);
+    }
+  }
+  if (selEnemy && firstPlayer) {
     for (let si = 0; si < selEnemy.slots.length; si++) {
       const slot = selEnemy.slots[si];
-      if (!slot.card) continue;
-      for (let ai = 0; ai < slot.card.actions.length; ai++) {
-        const act = slot.card.actions[ai];
-        if (act.type !== '공격' && act.type !== '반격') continue;
-        if (linkedKey.has(k('enemy', selEnemy.id, si, ai))) continue;
-        const srcEl = document.querySelector(`#enemy-cards .card-slot:nth-child(${si + 1}) .card-action[data-action-idx="${ai}"]`);
-        const playerIdx = battle.players.findIndex(pl => pl.id === firstAlivePlayer.id);
-        const dstEl = document.querySelectorAll('#player-actors .actor')[playerIdx];
-        const a = centerOf(srcEl), b = centerOf(dstEl);
-        if (!a || !b) continue;
-        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-        line.setAttribute('x1', a.x); line.setAttribute('y1', a.y);
-        line.setAttribute('x2', b.x); line.setAttribute('y2', b.y);
-        line.setAttribute('class', 'oneway-line');
-        line.setAttribute('marker-end', 'url(#arr-red)');
-        svg.appendChild(line);
-      }
+      if (!slot.card || slot.linkedTo) continue;
+      const hasAttack = slot.card.actions.some(a => a.type === '공격');
+      if (!hasAttack) continue;
+      const playerIdx = players.findIndex(p => p.id === firstPlayer.id);
+      const dstEl = document.querySelectorAll('#player-actors .actor')[playerIdx];
+      drawOnewayArrow(slotEl('enemy', si), dstEl);
     }
   }
 }
