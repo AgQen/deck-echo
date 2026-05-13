@@ -59,6 +59,9 @@ function init() {
   // 이어하기 버튼 활성/비활성 표시
   const cont = document.querySelector('[data-action="continue"]');
   if (cont && !hasSave()) cont.style.opacity = 0.5;
+
+  // 부팅 완료 플래그 (인라인 부팅 캐처가 이걸 보고 30초 알람을 끔)
+  window.__BOOTED__ = true;
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);

@@ -166,6 +166,42 @@
     <div id="toast" class="toast"></div>
   </div>
 
+  <!-- 모듈 로드 전부터 동작하는 인라인 에러 캐처. main.js 자체가 실패해도 화면에 표시됨. -->
+  <script>
+    (function () {
+      function showErr(msg) {
+        var ov = document.getElementById('boot-err');
+        if (!ov) {
+          ov = document.createElement('div');
+          ov.id = 'boot-err';
+          ov.style.cssText = 'position:fixed;left:0;right:0;bottom:0;z-index:99999;background:#3a1414;color:#ffd0d0;font:12px/1.4 monospace;padding:10px 36px 10px 12px;white-space:pre-wrap;max-height:50vh;overflow:auto;border-top:2px solid #c04040;';
+          var x = document.createElement('button');
+          x.textContent = '✕';
+          x.style.cssText = 'position:absolute;top:2px;right:8px;background:none;border:none;color:#fff;font-size:20px;cursor:pointer;';
+          x.onclick = function () { ov.remove(); };
+          document.body.appendChild(ov);
+          ov.appendChild(x);
+        }
+        var line = document.createElement('div');
+        line.textContent = msg;
+        ov.appendChild(line);
+      }
+      window.addEventListener('error', function (e) {
+        if (e && e.target && e.target.tagName && (e.target.tagName === 'SCRIPT' || e.target.tagName === 'LINK')) {
+          showErr('[로드실패] ' + (e.target.src || e.target.href));
+        } else {
+          showErr('[error] ' + (e.message || e) + (e.filename ? ('\n  @ ' + e.filename + ':' + e.lineno + ':' + e.colno) : ''));
+        }
+      }, true);
+      window.addEventListener('unhandledrejection', function (e) {
+        showErr('[promise] ' + (e.reason && (e.reason.stack || e.reason.message || e.reason) || e));
+      });
+      // 30초 후에도 main.js의 init이 안 끝났으면 알림 (booted 플래그는 main.js가 세움)
+      setTimeout(function () {
+        if (!window.__BOOTED__) showErr('[부팅 안됨] main.js가 30초 안에 init을 끝내지 못함. 위 에러 메시지 확인.');
+      }, 30000);
+    })();
+  </script>
   <script type="module" src="js/main.js"></script>
 </body>
 </html>
