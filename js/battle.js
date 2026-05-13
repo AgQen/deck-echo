@@ -166,17 +166,19 @@ function getActor(battle, side, id) {
   return (side === 'player' ? battle.players : battle.enemies).find(a => a.id === id);
 }
 
-// 턴 해소
-export function executeTurn(battle) {
+// 턴 해소. hooks 는 UI에서 애니메이션을 끼우기 위한 비동기 콜백.
+//   hooks.onClash({source, target, aRoll, bRoll, winner})     — 합 직전. 굴림 결과 노출 전
+//   hooks.onUnopposed({source, target, roll})                  — 일방공격 직전
+//   hooks.onAfterHit({source, target, before})                 — 데미지 적용 후 (HP/SP 갱신·팝업)
+// 각 훅은 Promise를 반환할 수 있고, 반환하면 그 만큼 진행이 대기된다.
+export async function executeTurn(battle, hooks = {}) {
   battle.phase = 'resolve';
   const log = battle.log;
   log.push({ type: 'turnStart', turn: battle.turn });
 
-  // 이번 턴 시작 시 적 상태 스냅샷 — 새로 죽거나 흐트러진 수 계산용
   const startDead = battle.enemies.filter(e => e.dead).length;
   const startDisordered = battle.enemies.filter(e => e.disordered).length;
 
-  // 모든 슬롯을 (속도 내림차순)으로 모은다
   const allSlots = [];
   for (const side of ['player', 'enemy']) {
     const list = side === 'player' ? battle.players : battle.enemies;
@@ -187,9 +189,24 @@ export function executeTurn(battle) {
   }
   allSlots.sort((x, y) => y.slot.speed - x.slot.speed);
 
-  // 액션 단위 소비 표시. 합으로 결의된 짝은 양쪽 모두 consumed.
   const consumed = new Set();
   const k = (side, actorId, slotIdx, actionIdx) => `${side}:${actorId}:${slotIdx}:${actionIdx}`;
+
+  async function fireOneWay(actor, action, slotIdx, actionIdx, target) {
+    if (!target) return;
+    if (action.type !== '공격' && action.type !== '반격') return;
+    const roll = rollAction(action, battle.rng);
+    await hooks.onUnopposed?.({
+      source: { actor, action, slotIdx, actionIdx },
+      target,
+      roll,
+    });
+    const before = snapshot(actor, target);
+    applyEvents([{ kind: 'hit', from: 'a', to: 'b', amount: roll, prop: action.property }], actor, target);
+    await hooks.onAfterHit?.({ source: actor, target, before });
+    awardXpFromDeltas(battle, actor, target, before, log);
+    log.push({ type: 'unopposed', src: actor.name, dst: target.name, amount: roll, prop: action.property });
+  }
 
   for (const slotInfo of allSlots) {
     const { side, actor, slot, slotIdx } = slotInfo;
@@ -205,38 +222,40 @@ export function executeTurn(battle) {
         const dstSlot = dstActor?.slots[tgt.slotIdx];
         const dstAction = dstSlot?.card?.actions[tgt.actionIdx];
         if (!dstAction || dstActor.dead) {
-          const before = snapshot(actor, dstActor);
-          fireUnopposed(battle, slotInfo, action, dstActor);
-          awardXpFromDeltas(battle, actor, dstActor, before, log);
+          // 대상 없어짐 → 일방공격
+          const opp = actor.side === 'player' ? battle.enemies.find(e => !e.dead) : battle.players.find(p => !p.dead);
+          await fireOneWay(actor, action, slotIdx, ai, opp);
+          consumed.add(k(side, actor.id, slotIdx, ai));
         } else {
           const aRoll = rollAction(action, battle.rng);
           const bRoll = rollAction(dstAction, battle.rng);
           const result = resolveClash({ a: action, b: dstAction, aRoll, bRoll });
+          await hooks.onClash?.({
+            source: { actor, action, slotIdx, actionIdx: ai },
+            target: { actor: dstActor, action: dstAction, slotIdx: tgt.slotIdx, actionIdx: tgt.actionIdx },
+            aRoll, bRoll, winner: result.winner,
+          });
           log.push({ type: 'clash', src: { actor: actor.name, action: action.type, roll: aRoll }, dst: { actor: dstActor.name, action: dstAction.type, roll: bRoll }, winner: result.winner });
           const before = snapshot(actor, dstActor);
           applyEvents(result.events, actor, dstActor);
+          await hooks.onAfterHit?.({ source: actor, target: dstActor, before });
           awardXpFromDeltas(battle, actor, dstActor, before, log);
           consumed.add(k(side, actor.id, slotIdx, ai));
-          // 회피가 승리한 경우 회피측 액션은 소비되지 않음 — 다음 합에 재사용
           const aIsEvadeWin = action.type === '회피' && (result.winner === 'a');
           const bIsEvadeWin = dstAction.type === '회피' && (result.winner === 'b');
           if (!bIsEvadeWin) consumed.add(k(tgt.side, tgt.actorId, tgt.slotIdx, tgt.actionIdx));
           if (aIsEvadeWin) consumed.delete(k(side, actor.id, slotIdx, ai));
         }
       } else {
+        // 미연결 액션
         const opp = actor.side === 'player' ? battle.enemies.find(e => !e.dead) : battle.players.find(p => !p.dead);
-        if (action.type === '공격' || action.type === '반격') {
-          const before = snapshot(actor, opp);
-          fireUnopposed(battle, slotInfo, action, opp);
-          awardXpFromDeltas(battle, actor, opp, before, log);
-        }
+        await fireOneWay(actor, action, slotIdx, ai, opp);
         consumed.add(k(side, actor.id, slotIdx, ai));
       }
       if (actor.dead) break;
     }
   }
 
-  // 이번 턴 새로 발생한 적 사망/흐트러짐
   const endDead = battle.enemies.filter(e => e.dead).length;
   const endDisordered = battle.enemies.filter(e => e.disordered).length;
   battle._extraDraw = Math.max(0, (endDead - startDead) + (endDisordered - startDisordered));
@@ -313,17 +332,6 @@ function applyXpToParty(battle, actorId, amount, log) {
     log.push({ type: 'levelUp', who: battleActor.name, level: ev.newLevel, maxLight: ev.newMaxLight });
   }
   log.push({ type: 'xpGain', who: battleActor.name, amount });
-}
-
-function fireUnopposed(battle, slotInfo, action, target) {
-  if (!target) return;
-  const { actor } = slotInfo;
-  if (action.type === '공격' || action.type === '반격') {
-    const roll = rollAction(action, battle.rng);
-    applyEvents([{ kind: 'hit', from: 'a', to: 'b', amount: roll, prop: action.property }], actor, target);
-    battle.log.push({ type: 'unopposed', src: actor.name, dst: target.name, amount: roll, prop: action.property });
-  }
-  // 방어류 미연결: 효과 없음
 }
 
 function endTurn(battle) {

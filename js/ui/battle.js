@@ -473,19 +473,179 @@ function formatLog(ev) {
   }
 }
 
-function onExecute() {
+async function onExecute() {
   const battle = state.run.inBattle;
   if (!battle) return;
   if (battle.phase !== 'plan') return;
-  // 빈 슬롯이 있으면 경고만
-  const empty = battle.players.some(p => p.slots.some(s => !s.card));
-  if (empty) toast('빈 슬롯이 있습니다 (미사용)');
-  executeTurn(battle);
+
+  const execBtn = document.querySelector('[data-action="execute"]');
+  if (execBtn) execBtn.disabled = true;
+
+  // 시작 버튼 누르면 계획 라인은 지우고 중앙에서만 진행
+  const svg = $('#clash-svg');
+  if (svg) svg.innerHTML = '';
+
+  try {
+    await executeTurn(battle, {
+      onClash: animateClash,
+      onUnopposed: animateOneway,
+      onAfterHit: animateHitResult,
+    });
+  } catch (e) {
+    console.error(e);
+    toast('전투 진행 중 오류: ' + (e.message || e));
+  } finally {
+    if (execBtn) execBtn.disabled = false;
+  }
+
   renderBattle();
 
   if (battle.phase === 'done') {
-    setTimeout(() => endBattle(battle), 600);
+    setTimeout(() => endBattle(battle), 700);
   }
+}
+
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+// 중앙에 합/일방 무대를 띄우고, 숫자를 굴린 후 승자/패자 강조
+async function animateClash({ source, target, aRoll, bRoll, winner }) {
+  const arena = makeArena({
+    mode: 'clash',
+    leftName: source.actor.name, leftAction: source.action.type,
+    rightName: target.actor.name, rightAction: target.action.type,
+  });
+  attachArena(arena);
+  await rollNumbers(arena, aRoll, bRoll, 650);
+  const aEl = arena.querySelector('.num-a');
+  const bEl = arena.querySelector('.num-b');
+  if (winner === 'a') { aEl.classList.add('winner'); bEl.classList.add('loser'); }
+  else if (winner === 'b') { bEl.classList.add('winner'); aEl.classList.add('loser'); }
+  // result 라벨
+  const tag = arena.querySelector('.arena-vs');
+  if (tag) tag.textContent = winner === 'a' ? '◀' : winner === 'b' ? '▶' : '=';
+  await sleep(450);
+}
+
+async function animateOneway({ source, target, roll }) {
+  const arena = makeArena({
+    mode: 'oneway',
+    leftName: source.actor.name, leftAction: source.action.type,
+    rightName: target?.name || '?', rightAction: '—',
+    solo: true,
+  });
+  attachArena(arena);
+  await rollNumbers(arena, roll, null, 500);
+  arena.querySelector('.num-a').classList.add('winner');
+  arena.querySelector('.num-b').classList.add('loser');
+  await sleep(350);
+}
+
+// 데미지 적용 직후: 행위자 위에 -N 팝업 + 흔들기, HP/SP 바 갱신, 무대 제거
+async function animateHitResult({ source, target, before }) {
+  const battle = state.run.inBattle;
+  function emitPopupAndShake(actor, beforeSide) {
+    if (!actor || !beforeSide) return;
+    const dHp = beforeSide.hp - actor.hp;
+    const dSp = beforeSide.sp - actor.sp;
+    if (dHp > 0) showDamagePopup(actor, dHp, 'hp');
+    if (dSp > 0) showDamagePopup(actor, dSp, 'sp');
+    if (dHp > 0 || dSp > 0) {
+      const el = findActorEl(actor);
+      if (el) {
+        el.classList.add('hit');
+        setTimeout(() => el.classList.remove('hit'), 320);
+      }
+    }
+  }
+  emitPopupAndShake(source, before.a);
+  emitPopupAndShake(target, before.b);
+
+  // HP/SP/상태 갱신
+  renderActorRow('#enemy-actors', battle.enemies, selectedEnemyId, id => { selectedEnemyId = id; renderBattle(); });
+  renderActorRow('#player-actors', battle.players, selectedActorId, id => { selectedActorId = id; renderBattle(); });
+  renderSelectedInfo('#enemy-info', battle.enemies.find(e => e.id === selectedEnemyId));
+  renderSelectedInfo('#player-info', battle.players.find(p => p.id === selectedActorId));
+
+  await sleep(620);
+  // 현재 무대 제거
+  const cur = document.querySelector('#zone-mid .arena');
+  if (cur) cur.remove();
+  await sleep(120);
+}
+
+function makeArena({ mode, leftName, leftAction, rightName, rightAction, solo }) {
+  const div = document.createElement('div');
+  div.className = 'arena';
+  div.innerHTML = `
+    <div class="arena-mode ${mode === 'clash' ? 'clash' : 'oneway'}">${mode === 'clash' ? '합' : '일방공격'}</div>
+    <div class="arena-side">
+      <div class="arena-actor">${escapeHtml(leftName)}</div>
+      <div class="arena-action">${escapeHtml(leftAction)}</div>
+      <div class="arena-num num-a">?</div>
+    </div>
+    <div class="arena-vs">${mode === 'clash' ? 'VS' : '→'}</div>
+    <div class="arena-side">
+      <div class="arena-actor">${escapeHtml(rightName)}</div>
+      <div class="arena-action">${escapeHtml(rightAction)}</div>
+      <div class="arena-num num-b">${solo ? '—' : '?'}</div>
+    </div>
+  `;
+  return div;
+}
+
+function escapeHtml(s) {
+  return String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+}
+
+function attachArena(arena) {
+  // 기존 무대 있으면 제거
+  document.querySelectorAll('#zone-mid .arena').forEach(a => a.remove());
+  $('#zone-mid').appendChild(arena);
+}
+
+function rollNumbers(arena, finalA, finalB, durationMs) {
+  return new Promise(resolve => {
+    const aEl = arena.querySelector('.num-a');
+    const bEl = arena.querySelector('.num-b');
+    const start = Date.now();
+    const id = setInterval(() => {
+      const elapsed = Date.now() - start;
+      if (elapsed >= durationMs) {
+        clearInterval(id);
+        aEl.textContent = String(finalA);
+        if (finalB != null) bEl.textContent = String(finalB);
+        resolve();
+        return;
+      }
+      aEl.textContent = String(Math.floor(Math.random() * 9 + 1));
+      if (finalB != null) bEl.textContent = String(Math.floor(Math.random() * 9 + 1));
+    }, 55);
+  });
+}
+
+function findActorEl(actor) {
+  if (!actor) return null;
+  const battle = state.run?.inBattle;
+  if (!battle) return null;
+  if (actor.side === 'enemy') {
+    const idx = battle.enemies.findIndex(e => e.id === actor.id);
+    return document.querySelectorAll('#enemy-actors .actor')[idx];
+  } else {
+    const idx = battle.players.findIndex(p => p.id === actor.id);
+    return document.querySelectorAll('#player-actors .actor')[idx];
+  }
+}
+
+function showDamagePopup(actor, amount, kind) {
+  const el = findActorEl(actor);
+  if (!el) return;
+  const rect = el.getBoundingClientRect();
+  const popup = document.createElement('div');
+  popup.className = 'dmg-popup ' + kind;
+  popup.textContent = '-' + amount;
+  popup.style.cssText = `position:fixed;left:${rect.left + rect.width / 2}px;top:${rect.top}px;`;
+  document.body.appendChild(popup);
+  setTimeout(() => popup.remove(), 1000);
 }
 
 function endBattle(battle) {
