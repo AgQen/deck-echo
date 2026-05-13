@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <title>덱빌딩 로그라이크 (가제)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0c" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- 타이틀 -->
+    <section class="screen active" data-screen="title">
+      <div class="title-wrap">
+        <h1 class="title-logo">DECK · ECHO</h1>
+        <p class="title-sub">덱빌딩 로그라이크 · 합 시스템</p>
+        <div class="title-menu">
+          <button class="btn-primary" data-action="new-game">새 게임</button>
+          <button class="btn-secondary" data-action="continue">이어하기</button>
+          <button class="btn-secondary" data-action="setup">초기 세팅</button>
+          <button class="btn-secondary" data-action="settings">설정</button>
+          <button class="btn-ghost" data-action="credits">정보</button>
+        </div>
+        <p class="title-foot">v0.1.0 · 초기 골격</p>
+      </div>
+    </section>
+
+    <!-- 맵 (어컴호러 스타일 노드 맵) -->
+    <section class="screen" data-screen="map">
+      <header class="top-bar">
+        <button class="icon-btn" data-action="map-back">‹</button>
+        <div class="top-title">행로</div>
+        <button class="icon-btn" data-action="open-settings">⚙</button>
+      </header>
+      <div class="map-stats">
+        <span data-stat="day">1일차</span>
+        <span data-stat="doom">불안 0/10</span>
+        <span data-stat="move">이동 2</span>
+      </div>
+      <div class="map-canvas" id="map-canvas">
+        <!-- 노드는 JS에서 그려짐 -->
+      </div>
+      <div class="map-actions">
+        <button class="btn-secondary" data-action="rest">휴식</button>
+        <button class="btn-secondary" data-action="deck">책장</button>
+        <button class="btn-primary" data-action="enter-node">진입</button>
+      </div>
+    </section>
+
+    <!-- 전투 -->
+    <section class="screen" data-screen="battle">
+      <svg class="clash-svg" id="clash-svg" preserveAspectRatio="none"></svg>
+      <!-- 상단: 적 -->
+      <div class="battle-top" id="zone-enemy">
+        <div class="zone-bar">
+          <button class="icon-btn" data-action="battle-settings">⚙</button>
+          <div class="zone-title">적</div>
+          <button class="icon-btn" data-action="battle-log">📜</button>
+        </div>
+        <div class="actor-row" id="enemy-actors"></div>
+        <div class="selected-info" id="enemy-info"></div>
+        <div class="card-rail enemy-rail" id="enemy-cards"></div>
+      </div>
+
+      <!-- 중단: 상호작용 -->
+      <div class="battle-mid" id="zone-mid">
+        <div class="mid-banner" id="mid-banner"></div>
+      </div>
+
+      <!-- 하단: 나 -->
+      <div class="battle-bot" id="zone-player">
+        <div class="actor-row" id="player-actors"></div>
+        <div class="selected-info" id="player-info"></div>
+        <div class="card-rail player-rail" id="player-cards"></div>
+        <div class="battle-bottom-bar">
+          <button class="icon-btn" data-action="open-items">🎒</button>
+          <button class="btn-primary big" data-action="execute">▶ 시작</button>
+          <button class="icon-btn" data-action="open-settings">⚙</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 카드 선택 모달 (전체화면) -->
+    <section class="modal" data-modal="card-pick">
+      <header class="modal-bar">
+        <button class="icon-btn" data-action="close-modal">‹</button>
+        <div class="modal-title">카드 배치</div>
+        <div class="modal-meta" id="card-pick-meta"></div>
+      </header>
+      <div class="card-grid" id="card-pick-grid"></div>
+    </section>
+
+    <!-- 카드 확대 모달 -->
+    <section class="modal" data-modal="card-zoom">
+      <div class="zoom-wrap" id="card-zoom-wrap"></div>
+      <button class="btn-ghost zoom-close" data-action="close-modal">닫기</button>
+    </section>
+
+    <!-- 설정 -->
+    <section class="modal" data-modal="settings">
+      <header class="modal-bar">
+        <button class="icon-btn" data-action="close-modal">‹</button>
+        <div class="modal-title">설정</div>
+      </header>
+      <div class="settings-body">
+        <div class="setting-row">
+          <label>효과음</label>
+          <input type="range" min="0" max="100" value="60" data-setting="sfx" />
+        </div>
+        <div class="setting-row">
+          <label>음악</label>
+          <input type="range" min="0" max="100" value="40" data-setting="bgm" />
+        </div>
+        <div class="setting-row">
+          <label>진동</label>
+          <input type="checkbox" checked data-setting="haptics" />
+        </div>
+        <div class="setting-row">
+          <label>흔들기 애니메이션</label>
+          <input type="checkbox" checked data-setting="shake" />
+        </div>
+        <hr/>
+        <button class="btn-secondary wide" data-action="resume">이어하기</button>
+        <button class="btn-secondary wide" data-action="to-title">시작화면으로</button>
+        <button class="btn-danger wide" data-action="abandon-run">현재 진행 포기</button>
+        <hr/>
+        <p class="muted">자동 저장은 맵 이동/전투 종료마다 진행됩니다.</p>
+      </div>
+    </section>
+
+    <!-- 초기 세팅 (덱/카드/슬롯) -->
+    <section class="modal" data-modal="setup">
+      <header class="modal-bar">
+        <button class="icon-btn" data-action="close-modal">‹</button>
+        <div class="modal-title">초기 세팅</div>
+      </header>
+      <div class="setup-body">
+        <h3>핸드 크기</h3>
+        <div class="seg" data-setup-group="hand-size">
+          <button data-value="3" class="seg-on">3장</button>
+          <button data-value="4">4장</button>
+          <button data-value="5">5장</button>
+        </div>
+        <h3>시작 책장</h3>
+        <p class="muted">최소 8장 / 권장 10~12장</p>
+        <div class="deck-list" id="setup-deck-list"></div>
+        <h3>카드 풀</h3>
+        <div class="deck-list" id="setup-pool-list"></div>
+        <button class="btn-primary wide" data-action="setup-confirm">확정하고 시작</button>
+      </div>
+    </section>
+
+    <!-- 책장 보기 -->
+    <section class="modal" data-modal="deck">
+      <header class="modal-bar">
+        <button class="icon-btn" data-action="close-modal">‹</button>
+        <div class="modal-title">책장</div>
+      </header>
+      <div class="card-grid" id="deck-grid"></div>
+    </section>
+
+    <!-- 토스트 -->
+    <div id="toast" class="toast"></div>
+  </div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
