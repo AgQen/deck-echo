@@ -308,6 +308,7 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 .card-action[data-type="반격"] { background: rgba(192,128,64,0.25); }
 .card-action[data-type="막기"] { background: rgba(64,128,192,0.25); }
 .card-action[data-type="회피"] { background: rgba(128,192,128,0.25); }
+.card-action[data-type="effect"] { background: rgba(180,140,240,0.20); color: #d8c8f0; }
 .card-roll { font-weight: 700; font-variant-numeric: tabular-nums; }
 .card-prop { font-size: 9px; opacity: 0.8; }
 .card-cost {

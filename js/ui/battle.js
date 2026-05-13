@@ -193,13 +193,20 @@ function renderCardEl(card, side, actorId, slotIdx, slotSpeed) {
 
   // 액션 칩들 (정보용 — 클릭은 카드 본체로 받음)
   const list = el('div', { class: 'card-actions' });
-  for (let i = 0; i < card.actions.length; i++) {
+  for (let i = 0; i < (card.actions || []).length; i++) {
     const a = card.actions[i];
     const ae = el('div', { class: 'card-action', 'data-type': a.type });
     ae.innerHTML = `<span>${a.type}</span><span class="card-roll">${a.min}-${a.max}</span>`;
     if (a.property) ae.appendChild(el('span', { class: 'card-prop', text: a.property }));
     ae.dataset.actionIdx = String(i);
     list.appendChild(ae);
+  }
+  // 유틸 효과 칩
+  if (card.id && CARDS[card.id]?.effects) {
+    for (const eff of CARDS[card.id].effects) {
+      const ce = el('div', { class: 'card-action', 'data-type': 'effect', text: effectLabel(eff) });
+      list.appendChild(ce);
+    }
   }
   c.appendChild(list);
 
@@ -402,12 +409,12 @@ function openCardPicker(actorId, slotIdx) {
     const cost = cardCost(card);
     const affordable = cost <= availableLight;
     const div = el('div', { class: 'card-pick' + (card.consumable ? ' consumable' : '') + (affordable ? '' : ' disabled') });
+    const actionsHtml = (card.actions || []).map(a => `<div class="card-action" data-type="${a.type}"><span>${a.type}</span><span class="card-roll">${a.min}-${a.max}</span></div>`).join('');
+    const effectsHtml = (card.effects || []).map(e => `<div class="card-action" data-type="effect">${effectLabel(e)}</div>`).join('');
     div.innerHTML = `
       <div class="card-cost">◆${cost}</div>
       <div class="card-name">${card.name}</div>
-      <div class="card-actions">
-        ${card.actions.map(a => `<div class="card-action" data-type="${a.type}"><span>${a.type}</span><span class="card-roll">${a.min}-${a.max}</span></div>`).join('')}
-      </div>
+      <div class="card-actions">${actionsHtml}${effectsHtml}</div>
       <div class="muted">${card.rarity}${card.consumable ? ' · 소모' : ''}</div>
     `;
     div.addEventListener('click', () => {
@@ -574,6 +581,14 @@ function makeArena({ mode, leftName, leftAction, rightName, rightAction, solo })
     </div>
   `;
   return div;
+}
+
+function effectLabel(eff) {
+  switch (eff.type) {
+    case 'draw': return `드로우 +${eff.value}`;
+    case 'light': return `빛 +${eff.value}`;
+    default: return `${eff.type} ${eff.value || ''}`.trim();
+  }
 }
 
 function escapeHtml(s) {
