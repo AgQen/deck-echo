@@ -207,7 +207,16 @@ export async function executeTurn(battle, hooks = {}) {
   const startDead = battle.enemies.filter(e => e.dead).length;
   const startDisordered = battle.enemies.filter(e => e.disordered).length;
 
-  // 1) 방어 대기 풀 구축 (미연결 슬롯의 방어 액션들)
+  // 어느 슬롯이 누군가의 명시적 합 대상인지 — 그 슬롯의 액션은 풀에서 제외 (이중 사용 방지)
+  const targetedSlotKeys = new Set();
+  for (const actor of [...battle.players, ...battle.enemies]) {
+    if (actor.dead || actor.disordered) continue;
+    for (const s of actor.slots) {
+      if (s.linkedTo) targetedSlotKeys.add(`${s.linkedTo.actorId}:${s.linkedTo.slotIdx}`);
+    }
+  }
+
+  // 1) 방어 대기 풀 구축
   //    actorId -> [{slotIdx, actionIdx, action}]
   const defensePools = new Map();
   for (const actor of [...battle.players, ...battle.enemies]) {
@@ -216,6 +225,7 @@ export async function executeTurn(battle, hooks = {}) {
     for (let si = 0; si < actor.slots.length; si++) {
       const slot = actor.slots[si];
       if (!slot.card || slot.linkedTo) continue;
+      if (targetedSlotKeys.has(`${actor.id}:${si}`)) continue;  // 누가 합 걸어둔 슬롯은 제외
       for (let ai = 0; ai < slot.card.actions.length; ai++) {
         const a = slot.card.actions[ai];
         if (a.type === '공격') continue;

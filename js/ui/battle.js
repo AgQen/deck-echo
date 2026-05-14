@@ -473,10 +473,10 @@ async function onExecute() {
   if (!battle) return;
   if (battle.phase !== 'plan') return;
 
+  linkMode = null;
   const execBtn = document.querySelector('[data-action="execute"]');
   if (execBtn) execBtn.disabled = true;
 
-  // 시작 버튼 누르면 계획 라인은 지우고 중앙에서만 진행
   const svg = $('#clash-svg');
   if (svg) svg.innerHTML = '';
 
