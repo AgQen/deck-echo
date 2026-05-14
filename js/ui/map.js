@@ -27,12 +27,31 @@ export function renderMap() {
   if (!run) { console.warn('renderMap: no run'); return; }
   if (!run.map) {
     console.warn('renderMap: no map — regenerating');
-    run.map = generateAct(run.act || 1, makeRng(run.seed || Date.now()));
+    try {
+      run.map = generateAct(run.act || 1, makeRng(run.seed || Date.now()));
+    } catch (e) {
+      const t = document.getElementById('toast');
+      if (t) { t.textContent = '맵 생성 실패: ' + (e.message || e); t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 4000); }
+      console.error('generateAct failed', e);
+      return;
+    }
   }
   const canvas = $('#map-canvas');
   if (!canvas) return;
-  if (canvas.clientWidth === 0) { requestAnimationFrame(renderMap); return; }
+  // 첫 호출에서 canvas가 아직 레이아웃 잡히기 전이면 다음 프레임에 다시
+  if (canvas.clientWidth === 0 || canvas.clientHeight === 0) {
+    requestAnimationFrame(renderMap);
+    return;
+  }
   canvas.innerHTML = '';
+  const nodeCount = Object.keys(run.map.nodes || {}).length;
+  if (nodeCount === 0) {
+    canvas.appendChild(el('div', {
+      style: 'position:absolute;left:0;right:0;top:50%;text-align:center;color:#ff6060;',
+      text: '맵 노드가 비어 있습니다 — 새 게임을 다시 시작해주세요.'
+    }));
+    return;
+  }
 
   const current = run.map.current;
   const reachable = new Set(run.map.nodes[current]?.conn || []);
