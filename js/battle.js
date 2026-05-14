@@ -464,6 +464,16 @@ function applyXpToParty(battle, actorId, amount, log) {
   }
   for (const ev of events1) {
     log.push({ type: 'levelUp', who: battleActor.name, level: ev.newLevel, maxLight: ev.newMaxLight });
+    // 화면에 떠오르는 알림 — toast로 노출 (UI 이벤트)
+    try {
+      const t = document.getElementById('toast');
+      if (t) {
+        t.textContent = `★ 레벨 ${ev.newLevel} — 최대 빛 ${ev.newMaxLight}`;
+        t.classList.add('show');
+        clearTimeout(window.__lvlupTo__);
+        window.__lvlupTo__ = setTimeout(() => t.classList.remove('show'), 1800);
+      }
+    } catch {}
   }
   log.push({ type: 'xpGain', who: battleActor.name, amount });
 }

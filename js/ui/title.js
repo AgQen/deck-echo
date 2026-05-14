@@ -34,6 +34,7 @@ function onTitleAction(act) {
     }
     case 'setup': openModal('setup'); break;
     case 'settings': openModal('settings'); break;
-    case 'credits': toast('© DECK·ECHO — v0.1.0', 2200); break;
+    case 'help': openModal('help'); break;
+    case 'credits': toast('© DECK·ECHO — 잠든 자의 메아리 v0.2', 2400); break;
   }
 }
