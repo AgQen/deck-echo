@@ -84,10 +84,26 @@ function renderActorRow(sel, actors, selId, onSelect) {
     let cls = 'actor' + (a.id === selId ? ' selected' : '') + (a.dead ? ' dead' : '');
     if (a.targetActorId) cls += ' engaged';
     if (engagedAsTarget.has(a.id)) cls += ' engaged-target';
-    if (linkMode && linkMode.actorId === a.id) cls += ' link-source';
+    if (linkMode && linkMode.side !== 'enemy' || (linkMode && linkMode.side === 'enemy' && !linkMode.slotIdx && linkMode.actorId === a.id)) {
+      // 그냥 모드 표시는 link-source만 사용
+    }
+    if (linkMode && linkMode.actorId === a.id && linkMode.slotIdx == null) cls += ' link-source';
     const div = el('div', { class: cls });
     div.appendChild(el('div', { class: 'actor-portrait', text: a.portrait || '?' }));
     div.appendChild(el('div', { class: 'actor-name', text: a.name }));
+    // HP/SP 미니 게이지
+    const mini = el('div', { class: 'actor-mini' });
+    const hpBar = el('div', { class: 'mini-bar hp' });
+    const hpFill = el('div', { class: 'mini-fill' });
+    hpFill.style.width = Math.max(0, Math.min(100, (a.hp / a.maxHp) * 100)) + '%';
+    hpBar.appendChild(hpFill);
+    const spBar = el('div', { class: 'mini-bar sp' });
+    const spFill = el('div', { class: 'mini-fill' });
+    spFill.style.width = Math.max(0, Math.min(100, (a.sp / a.maxSp) * 100)) + '%';
+    spBar.appendChild(spFill);
+    mini.appendChild(hpBar);
+    mini.appendChild(spBar);
+    div.appendChild(mini);
     const slots = el('div', { class: 'actor-slots' });
     for (let i = 0; i < a.actionSlots; i++) {
       const dot = el('div', { class: 'slot-dot' });
