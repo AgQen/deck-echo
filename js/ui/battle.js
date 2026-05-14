@@ -104,13 +104,27 @@ function renderActorRow(sel, actors, selId, onSelect) {
     mini.appendChild(hpBar);
     mini.appendChild(spBar);
     div.appendChild(mini);
-    const slots = el('div', { class: 'actor-slots' });
+    // 속도 오브 — 캐릭터 앞에 놓인 합 연결용 아이콘.
+    //   각 슬롯의 속도값을 동전처럼 표시. 클릭하면 그 캐릭터로 교전 시작.
+    const orbs = el('div', { class: 'speed-orbs' });
     for (let i = 0; i < a.actionSlots; i++) {
-      const dot = el('div', { class: 'slot-dot' });
-      if (a.slots[i]?.card) dot.classList.add('active');
-      slots.appendChild(dot);
+      const slot = a.slots[i];
+      let orbCls = 'speed-orb' + (slot?.card ? ' filled' : '');
+      if (slot?.targetPlayerId) orbCls += ' routed';
+      const orb = el('div', { class: orbCls, text: String(slot?.speed ?? '?') });
+      orb.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        // 적 측: 슬롯 단위 라우팅 (적 카드 → 내 사람) 기본 동작
+        // 내 측: 캐릭터 교전
+        if (a.side === 'enemy' && slot?.card) {
+          onCardClick({ side: 'enemy', actorId: a.id, slotIdx: i });
+        } else {
+          onCardClick({ side: a.side, actorId: a.id });
+        }
+      });
+      orbs.appendChild(orb);
     }
-    div.appendChild(slots);
+    div.appendChild(orbs);
     // 상태이상 칩
     if (a.statuses && Object.keys(a.statuses).length) {
       const chips = el('div', { class: 'actor-status-row' });
