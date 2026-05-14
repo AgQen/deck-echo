@@ -915,6 +915,28 @@ blockquote.title-quote { margin: 0; }
   border: 1px solid rgba(216,169,87,0.25);
 }
 .cs-foot { padding: 10px 14px; border-top: 1px solid #2a2a32; background: var(--bg-1); }
+.cs-bonus-title {
+  margin-top: 8px;
+  color: var(--gold-warm);
+  font-size: 13px; letter-spacing: 0.1em;
+  padding: 6px 4px;
+  border-top: 1px dashed rgba(216,169,87,0.3);
+}
+.cs-bonus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.card-pick.cs-bonus {
+  position: relative;
+  cursor: pointer;
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+}
+.card-pick.cs-bonus:active { transform: scale(0.97); }
+.card-pick.cs-bonus.picked {
+  outline: 2px solid var(--gold-warm);
+  box-shadow: 0 0 16px rgba(240,200,96,0.5);
+}
 
 /* ===== 동료 합류 모달 ===== */
 .recruit-body {

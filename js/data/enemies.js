@@ -6,7 +6,7 @@ import { CARDS } from './cards.js';
 export const ENEMIES = {
   husk: {
     id: 'husk', name: '비틀거리는 잔재', portrait: '👁',
-    maxHp: 22, maxSp: 18, actionSlots: 1,
+    maxHp: 11, maxSp: 18, actionSlots: 1,
     speedDice: { min: 1, max: 3 },     // 초반 적은 느리게 — 플레이어가 합을 걸기 쉽도록
     resist: { 참격: '일반', 관통: '저항', 타격: '취약', 정신: '취약', 공포: '취약' },
     // 자체 패턴: id 또는 카드 정의를 직접
@@ -18,7 +18,7 @@ export const ENEMIES = {
   },
   watcher: {
     id: 'watcher', name: '관찰자', portrait: '🜲',
-    maxHp: 30, maxSp: 24, actionSlots: 2,
+    maxHp: 15, maxSp: 24, actionSlots: 2,
     speedDice: { min: 4, max: 7 },
     resist: { 참격: '일반', 관통: '일반', 타격: '일반', 정신: '저항', 공포: '저항' },
     pattern: [
@@ -30,7 +30,7 @@ export const ENEMIES = {
   },
   bossWeaver: {
     id: 'bossWeaver', name: '엮는 자', portrait: '🕷',
-    maxHp: 80, maxSp: 55, actionSlots: 3,
+    maxHp: 40, maxSp: 55, actionSlots: 3,
     speedDice: { min: 4, max: 8 },
     resist: { 참격: '저항', 관통: '일반', 타격: '저항', 정신: '저항', 공포: '면역' },
     pattern: [
@@ -45,7 +45,7 @@ export const ENEMIES = {
   // ── 1막 추가 적
   cultist: {
     id: 'cultist', name: '광신도', portrait: '🕯',
-    maxHp: 26, maxSp: 20, actionSlots: 2,
+    maxHp: 13, maxSp: 20, actionSlots: 2,
     speedDice: { min: 2, max: 4 },
     resist: { 참격: '일반', 관통: '일반', 타격: '일반', 정신: '저항', 공포: '저항' },
     pattern: [
@@ -59,7 +59,7 @@ export const ENEMIES = {
   // ── 2막 적
   thrall: {
     id: 'thrall', name: '심해의 종', portrait: '🐟',
-    maxHp: 36, maxSp: 24, actionSlots: 2,
+    maxHp: 18, maxSp: 24, actionSlots: 2,
     speedDice: { min: 3, max: 6 },
     resist: { 참격: '저항', 관통: '일반', 타격: '취약', 정신: '일반', 공포: '저항' },
     pattern: [
@@ -74,7 +74,7 @@ export const ENEMIES = {
   // ── 3막 적
   spawn: {
     id: 'spawn', name: '심연의 자손', portrait: '🦑',
-    maxHp: 48, maxSp: 30, actionSlots: 2,
+    maxHp: 24, maxSp: 30, actionSlots: 2,
     speedDice: { min: 4, max: 7 },
     resist: { 참격: '일반', 관통: '저항', 타격: '일반', 정신: '저항', 공포: '면역' },
     pattern: [
@@ -87,7 +87,7 @@ export const ENEMIES = {
   },
   shoggothLet: {
     id: 'shoggothLet', name: '슈고스렛', portrait: '🟣',
-    maxHp: 60, maxSp: 36, actionSlots: 3,
+    maxHp: 30, maxSp: 36, actionSlots: 3,
     speedDice: { min: 3, max: 7 },
     resist: { 참격: '저항', 관통: '저항', 타격: '일반', 정신: '취약', 공포: '면역' },
     pattern: [
@@ -102,7 +102,7 @@ export const ENEMIES = {
   // ── 보스
   bossTheRitualist: {
     id: 'bossTheRitualist', name: '의식의 집전자', portrait: '🜏',
-    maxHp: 130, maxSp: 80, actionSlots: 3,
+    maxHp: 65, maxSp: 80, actionSlots: 3,
     speedDice: { min: 5, max: 8 },
     resist: { 참격: '일반', 관통: '저항', 타격: '저항', 정신: '면역', 공포: '면역' },
     pattern: [
@@ -115,7 +115,7 @@ export const ENEMIES = {
   },
   bossSleeperOfTheDeep: {
     id: 'bossSleeperOfTheDeep', name: '잠든 자', portrait: '🐙',
-    maxHp: 200, maxSp: 120, actionSlots: 4,
+    maxHp: 100, maxSp: 120, actionSlots: 4,
     speedDice: { min: 4, max: 9 },
     resist: { 참격: '저항', 관통: '저항', 타격: '저항', 정신: '저항', 공포: '면역' },
     pattern: [
@@ -132,7 +132,7 @@ export const ENEMIES = {
   // ─── 상태이상 키워드 기반 신규 적 ───
   bleedfeeder: {
     id: 'bleedfeeder', name: '혈식자', portrait: '🩸',
-    maxHp: 30, maxSp: 20, actionSlots: 2,
+    maxHp: 15, maxSp: 20, actionSlots: 2,
     speedDice: { min: 2, max: 5 },
     resist: { 참격: '저항', 관통: '취약', 타격: '일반', 정신: '일반', 공포: '저항' },
     pattern: [
@@ -144,7 +144,7 @@ export const ENEMIES = {
   },
   wilter: {
     id: 'wilter', name: '시들음', portrait: '🥀',
-    maxHp: 28, maxSp: 26, actionSlots: 2,
+    maxHp: 14, maxSp: 26, actionSlots: 2,
     speedDice: { min: 2, max: 4 },
     resist: { 참격: '일반', 관통: '일반', 타격: '저항', 정신: '저항', 공포: '저항' },
     pattern: [
@@ -156,7 +156,7 @@ export const ENEMIES = {
   },
   moaningShape: {
     id: 'moaningShape', name: '신음하는 형상', portrait: '👤',
-    maxHp: 32, maxSp: 30, actionSlots: 2,
+    maxHp: 16, maxSp: 30, actionSlots: 2,
     speedDice: { min: 3, max: 5 },
     resist: { 참격: '일반', 관통: '일반', 타격: '일반', 정신: '저항', 공포: '면역' },
     pattern: [
@@ -168,7 +168,7 @@ export const ENEMIES = {
   },
   stalker: {
     id: 'stalker', name: '추격자', portrait: '🜉',
-    maxHp: 34, maxSp: 22, actionSlots: 3,
+    maxHp: 17, maxSp: 22, actionSlots: 3,
     speedDice: { min: 5, max: 8 },
     resist: { 참격: '일반', 관통: '저항', 타격: '취약', 정신: '일반', 공포: '일반' },
     pattern: [
@@ -183,7 +183,7 @@ export const ENEMIES = {
   // ─── 새 미니보스 (정예 슬롯에서 등장) ───
   sleepWeaver: {
     id: 'sleepWeaver', name: '잠을 짜는 자', portrait: '🜗',
-    maxHp: 70, maxSp: 50, actionSlots: 3,
+    maxHp: 35, maxSp: 50, actionSlots: 3,
     speedDice: { min: 3, max: 7 },
     resist: { 참격: '저항', 관통: '일반', 타격: '저항', 정신: '저항', 공포: '면역' },
     pattern: [
@@ -196,7 +196,7 @@ export const ENEMIES = {
   },
   hollowChorus: {
     id: 'hollowChorus', name: '공허 합창', portrait: '🜍',
-    maxHp: 56, maxSp: 64, actionSlots: 3,
+    maxHp: 28, maxSp: 64, actionSlots: 3,
     speedDice: { min: 2, max: 6 },
     resist: { 참격: '저항', 관통: '저항', 타격: '일반', 정신: '취약', 공포: '저항' },
     pattern: [

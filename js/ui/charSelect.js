@@ -9,7 +9,12 @@ import { renderMap } from './map.js';
 // 시작 캐릭터 선택. 단일 캐릭터로 런 시작 — 동료는 보스 처치 시 합류.
 const STARTABLE = ['protagonist', 'scholar', 'scout', 'hunter', 'madman', 'monk'];
 
+// 시작 보너스 카드 풀 — 캐릭터를 고른 후 2장 더 선택.
+const BONUS_POOL = ['insight', 'meditation', 'innerLight', 'baseEvade', 'baseGuard', 'baseParry', 'battleHymn', 'silentBlade'];
+const BONUS_PICK_COUNT = 2;
+
 let pickedId = null;
+let pickedBonuses = [];
 
 export function bindCharacterSelect() {
   document.querySelectorAll('[data-screen="character-select"] [data-action]').forEach(b => {
@@ -26,6 +31,7 @@ function onAction(act) {
 
 export function openCharacterSelect() {
   pickedId = null;
+  pickedBonuses = [];
   renderList();
   showScreen('character-select');
   updateStartBtn();
@@ -71,6 +77,7 @@ function renderList() {
 
     card.appendChild(meta);
     card.addEventListener('click', () => {
+      if (pickedId !== id) pickedBonuses = []; // 캐릭터 바꾸면 보너스 초기화
       pickedId = id;
       renderList();
       updateStartBtn();
@@ -78,23 +85,64 @@ function renderList() {
     if (pickedId === id) card.classList.add('picked');
     body.appendChild(card);
   }
+
+  // 캐릭터 고른 뒤 보너스 카드 픽
+  if (pickedId) {
+    body.appendChild(el('div', { class: 'cs-bonus-title', text: `시작 보너스 — 카드 ${BONUS_PICK_COUNT}장을 골라 시작 덱에 추가하세요 (${pickedBonuses.length}/${BONUS_PICK_COUNT})` }));
+    const grid = el('div', { class: 'cs-bonus-grid' });
+    for (const cid of BONUS_POOL) {
+      const c = CARDS[cid]; if (!c) continue;
+      const div = el('div', { class: 'card-pick cs-bonus' });
+      const picked = pickedBonuses.includes(cid);
+      if (picked) div.classList.add('picked');
+      const reached = pickedBonuses.length >= BONUS_PICK_COUNT && !picked;
+      if (reached) div.classList.add('disabled');
+      const actionsHtml = (c.actions || []).map(a => `<div class="card-action" data-type="${a.type}"><span>${a.type}</span><span class="card-roll">${a.min}-${a.max}</span></div>`).join('');
+      div.innerHTML = `
+        <div class="card-cost">◆${c.light ?? 0}</div>
+        <div class="card-name">${c.name}</div>
+        <div class="card-actions">${actionsHtml}</div>
+        <div class="muted">${c.rarity}</div>
+        <div class="card-desc">${c.desc || ''}</div>
+      `;
+      div.addEventListener('click', () => {
+        if (picked) {
+          pickedBonuses = pickedBonuses.filter(x => x !== cid);
+        } else if (pickedBonuses.length < BONUS_PICK_COUNT) {
+          pickedBonuses.push(cid);
+        }
+        renderList();
+        updateStartBtn();
+      });
+      grid.appendChild(div);
+    }
+    body.appendChild(grid);
+  }
 }
 
 function updateStartBtn() {
   const btn = document.querySelector('[data-action="cs-start"]');
   if (!btn) return;
-  btn.disabled = !pickedId;
-  if (pickedId) {
+  const ready = !!pickedId && pickedBonuses.length === BONUS_PICK_COUNT;
+  btn.disabled = !ready;
+  if (!pickedId) btn.textContent = '캐릭터를 선택하세요';
+  else if (pickedBonuses.length < BONUS_PICK_COUNT) {
+    btn.textContent = `보너스 카드 ${BONUS_PICK_COUNT - pickedBonuses.length}장 더 골라요`;
+  } else {
     const def = CHARACTERS[pickedId];
     btn.textContent = `${def?.name || '?'} 으로 시작`;
-  } else {
-    btn.textContent = '캐릭터를 선택하세요';
   }
 }
 
 function commitStart() {
-  if (!pickedId) return;
+  if (!pickedId || pickedBonuses.length !== BONUS_PICK_COUNT) return;
   startNewRun({ partyIds: [pickedId] });
+  // 보너스 카드를 그 캐릭터의 시작 덱에 추가
+  const player = state.run.party.find(p => p.id === pickedId);
+  if (player) {
+    player.deck = player.deck || [];
+    for (const cid of pickedBonuses) player.deck.push(cid);
+  }
   saveAll();
   showScreen('map');
   requestAnimationFrame(() => renderMap());

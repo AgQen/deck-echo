@@ -918,17 +918,18 @@ function endBattle(battle) {
     if (isNormal) gold = Math.round((28 + Math.floor(battle.rng() * 16)) * actMult);
     if (isElite)  gold = Math.round((60 + Math.floor(battle.rng() * 25)) * actMult);
     if (isBoss)   gold = Math.round((130 + Math.floor(battle.rng() * 40)) * actMult);
-    // 카드 선택지
+    // 카드 선택지 — 일반 4장, 정예 5장, 보스 6장
     let cards = [];
     if (isNormal || isElite || isBoss) {
+      const wantCount = isBoss ? 6 : (isElite ? 5 : 4);
       const pool = Object.values(CARDS).filter(c => c.rarity === '일반' || c.rarity === '희귀');
-      const choose3 = [];
+      const chosen = [];
       const used = new Set();
-      while (choose3.length < 3 && used.size < pool.length) {
+      while (chosen.length < wantCount && used.size < pool.length) {
         const c = pool[Math.floor(battle.rng() * pool.length)];
-        if (!used.has(c.id)) { used.add(c.id); choose3.push(c.id); }
+        if (!used.has(c.id)) { used.add(c.id); chosen.push(c.id); }
       }
-      cards = choose3;
+      cards = chosen;
     }
     // 보스/엘리트는 유물 보상
     let relic = null;

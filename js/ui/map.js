@@ -218,11 +218,10 @@ function onRestQuick() {
 }
 
 export function openDeck() {
-  const modal = document.querySelector('[data-modal="deck"]');
   const grid = $('#deck-grid');
   grid.innerHTML = '';
   if (!state.run || !state.run.party) {
-    modal.classList.add('active');
+    openModal('deck');
     return;
   }
   // 캐릭터별 구획으로 묶어서 표시
@@ -248,7 +247,7 @@ export function openDeck() {
     section.appendChild(list);
     grid.appendChild(section);
   }
-  modal.classList.add('active');
+  openModal('deck');
 }
 
 // ─────────────────────────────────────────
