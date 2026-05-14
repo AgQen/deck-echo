@@ -250,21 +250,32 @@ function renderCardEl(card, side, actorId, slotIdx, slotSpeed) {
   return c;
 }
 
-// 카드 클릭: 내 카드면 링크 시작/취소, 적 카드면 링크 완성
+// 카드 클릭 — 우선순위: 이미 연결됨 → 해제 / 링크 모드 중 자기 카드 → 취소 / 그 외 → 모드 진입 또는 연결
 function onCardClick(ref) {
   const battle = state.run?.inBattle;
   if (!battle) return;
   if (ref.side === 'player') {
-    // 자기 카드 다시 클릭 → 링크 모드 취소 (이미 링크 되어 있다면 풀기)
-    if (linkMode && linkMode.actorId === ref.actorId && linkMode.slotIdx === ref.slotIdx) {
+    const actor = battle.players.find(p => p.id === ref.actorId);
+    const slot = actor?.slots[ref.slotIdx];
+
+    // 1) 이 슬롯에 합이 이미 걸려 있으면 → 해제
+    if (slot?.linkedTo) {
       unlinkSlot(battle, { side: 'player', actorId: ref.actorId, slotIdx: ref.slotIdx });
+      linkMode = null;
+      toast('합 해제');
+      renderBattle();
+      return;
+    }
+    // 2) 현재 링크 모드가 이 슬롯이면 → 모드 취소
+    if (linkMode && linkMode.actorId === ref.actorId && linkMode.slotIdx === ref.slotIdx) {
       linkMode = null;
       renderBattle();
       return;
     }
+    // 3) 그 외 → 이 슬롯을 합 시작점으로
     linkMode = ref;
     haptic(8);
-    toast('합칠 적 카드를 누르세요 (자기 카드 다시 누르면 취소)');
+    toast('합칠 적 카드를 누르세요 (내 카드 다시 누르면 취소)');
     renderBattle();
   } else {
     // 적 카드 클릭 → 링크 시도

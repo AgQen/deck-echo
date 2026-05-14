@@ -7,13 +7,17 @@ export const CHARACTERS = {
   protagonist: {
     id: 'protagonist',
     name: '조사관',
-    portrait: '🜍',  // 황 — 비밀의 학문
+    portrait: '🜍',
     maxHp: 50, maxSp: 30,
     actionSlots: 2,
     speedDice: { min: 4, max: 7 },
     baseMaxLight: 5,
     resist: { 참격: '일반', 관통: '일반', 타격: '일반', 정신: '일반', 공포: '일반' },
-    startingDeck: null,
+    startingDeck: [
+      'baseSlash', 'baseSlash', 'basePierce', 'baseSmash',
+      'baseGuard', 'baseParry', 'baseEvade',
+      'insight', 'rareWhirl',
+    ],
   },
   scholar: {
     id: 'scholar',
@@ -24,7 +28,11 @@ export const CHARACTERS = {
     speedDice: { min: 3, max: 6 },
     baseMaxLight: 6,
     resist: { 참격: '취약', 관통: '일반', 타격: '일반', 정신: '저항', 공포: '저항' },
-    startingDeck: null,
+    startingDeck: [
+      'insight', 'insight', 'meditation',
+      'baseGuard', 'mantraBlock', 'baseEvade',
+      'rareDread', 'ritual', 'paranoia',
+    ],
   },
   scout: {
     id: 'scout',
@@ -35,7 +43,11 @@ export const CHARACTERS = {
     speedDice: { min: 5, max: 8 },
     baseMaxLight: 4,
     resist: { 참격: '일반', 관통: '저항', 타격: '취약', 정신: '일반', 공포: '일반' },
-    startingDeck: null,
+    startingDeck: [
+      'basePierce', 'basePierce', 'baseSlash',
+      'baseParry', 'baseEvade', 'baseEvade',
+      'shadowStrike', 'twinFang',
+    ],
   },
 };
 

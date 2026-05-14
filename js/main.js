@@ -37,6 +37,10 @@ window.addEventListener('unhandledrejection', (e) => {
   showError(`[promise] ${e.reason}`);
 });
 
+function applySettingsToDOM() {
+  document.body.classList.toggle('wide', !!state.settings.wide);
+}
+
 function init() {
   loadSettings();
   // 설정 입력 동기화
@@ -46,6 +50,10 @@ function init() {
     if (inp.type === 'checkbox') inp.checked = !!v;
     else inp.value = v;
   }
+  applySettingsToDOM();
+  // 와이드 토글이 바뀌면 즉시 반영
+  const wideInput = document.querySelector('[data-setting="wide"]');
+  if (wideInput) wideInput.addEventListener('change', applySettingsToDOM);
 
   bindTitle();
   bindMap();

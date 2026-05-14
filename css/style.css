@@ -17,10 +17,22 @@
   --moss:       #6a8a48;
   --ivory:      #f0d9a5;
 }
-html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: var(--bg-deep); color: var(--ink-1); font-family: 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, sans-serif; user-select: none; -webkit-user-select: none; }
+html, body {
+  margin: 0; padding: 0; height: 100%; overflow: hidden;
+  background: var(--bg-deep);
+  color: var(--ink-1);
+  font-family: 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, sans-serif;
+  user-select: none; -webkit-user-select: none;
+}
+/* PC 등 넓은 화면에서는 폰 비율로 중앙 정렬, 좌우는 어둠. 설정에서 '와이드 모드'로 해제 가능. */
+body { display: flex; justify-content: center; align-items: stretch; }
+/* 와이드 모드: body에 .wide 클래스 부여 시 #app가 전체 폭 차지 */
+body.wide #app { max-width: none; box-shadow: none; }
 #app {
   width: 100vw; height: 100vh; height: 100dvh;
+  max-width: 480px;
   position: relative; overflow: hidden;
+  box-shadow: 0 0 60px rgba(0,0,0,0.8);
   background:
     radial-gradient(ellipse at 18% 12%, rgba(74,31,79,0.35), transparent 55%),
     radial-gradient(ellipse at 82% 22%, rgba(42,92,106,0.30), transparent 60%),

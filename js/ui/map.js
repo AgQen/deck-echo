@@ -45,19 +45,10 @@ export function renderMap() {
   }
   canvas.innerHTML = '';
   const nodeCount = Object.keys(run.map.nodes || {}).length;
-
-  // 진단 표시 — 정상이면 잠시 후 사라지지만 디버깅에 도움됨
-  const diag = el('div', {
-    style: 'position:absolute;left:6px;top:6px;font:11px monospace;background:rgba(20,20,30,0.85);color:#b0e0a0;padding:4px 8px;border:1px solid #4a4a55;border-radius:4px;z-index:10;pointer-events:none;',
-    text: `nodes:${nodeCount} canvas:${canvas.clientWidth}x${canvas.clientHeight}`,
-  });
-  canvas.appendChild(diag);
-  setTimeout(() => { diag?.remove(); }, 5000);
-
   if (nodeCount === 0) {
     canvas.appendChild(el('div', {
       style: 'position:absolute;left:0;right:0;top:50%;text-align:center;color:#ff6060;font-size:14px;font-weight:bold;z-index:11;',
-      text: '맵 노드가 0개입니다 — 콘솔(F12) 확인 필요'
+      text: '맵 노드가 0개입니다'
     }));
     return;
   }

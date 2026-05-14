@@ -1,6 +1,6 @@
 // 게임 전역 상태. 단일 객체. 저장은 storage.js에서.
 import { makeRng } from './rng.js';
-import { instantiateCharacter } from './data/characters.js';
+import { CHARACTERS, instantiateCharacter } from './data/characters.js';
 import { STARTER_DECK } from './data/cards.js';
 import { generateAct } from './data/acts.js';
 
@@ -11,23 +11,31 @@ export const state = {
   settings: {
     sfx: 60, bgm: 40, haptics: true, shake: true,
     handSize: 3,
+    wide: false,        // PC 풀 화면 모드 (체크 시 #app max-width 해제)
   },
 };
 
-// 새 런 시작
-export function startNewRun({ characterId = 'protagonist', seed = Date.now() } = {}) {
+// 새 런 시작.
+// partyIds 로 여러 캐릭터를 받을 수 있음 (기본: 조사관 + 서생).
+export function startNewRun({ partyIds = ['protagonist', 'scholar'], seed = Date.now() } = {}) {
   const rng = makeRng(seed);
-  const party = [instantiateCharacter(characterId)];
-  const deck = STARTER_DECK.slice();
+  const party = partyIds.map(id => instantiateCharacter(id));
+  // 덱은 각 캐릭터의 startingDeck 합집합. 캐릭터 정의에 deck이 없으면 STARTER_DECK fallback.
+  const deck = [];
+  for (const p of party) {
+    const def = CHARACTERS[p.id];
+    if (def?.startingDeck?.length) deck.push(...def.startingDeck);
+    else deck.push(...STARTER_DECK);
+  }
   state.run = {
     seed,
     rngState: rng.seed(),
     day: 1,
-    act: 1,                // 1~3
+    act: 1,
     party,
     deck,
     relics: [],
-    gold: 50,              // 시작 골드
+    gold: 50,
     map: generateAct(1, rng),
     inBattle: null,
     selectedActorId: party[0].id,
