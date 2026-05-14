@@ -18,20 +18,25 @@
   --ivory:      #f0d9a5;
 }
 html, body {
-  margin: 0; padding: 0; height: 100%; overflow: hidden;
+  margin: 0; padding: 0;
   background: var(--bg-deep);
   color: var(--ink-1);
   font-family: 'Pretendard', 'Noto Sans KR', system-ui, -apple-system, sans-serif;
   user-select: none; -webkit-user-select: none;
 }
-/* PC 등 넓은 화면에서는 폰 비율로 중앙 정렬, 좌우는 어둠. 설정에서 '와이드 모드'로 해제 가능. */
-body { display: flex; justify-content: center; align-items: stretch; }
+html { height: 100%; }
+body {
+  display: flex; justify-content: center; align-items: flex-start;
+  min-height: 100vh; min-height: 100dvh;
+  overflow-x: hidden; overflow-y: auto;   /* body 가 세로 스크롤을 담당 */
+}
 /* 와이드 모드: body에 .wide 클래스 부여 시 #app가 전체 폭 차지 */
 body.wide #app { max-width: none; box-shadow: none; }
 #app {
-  width: 100vw; height: 100vh; height: 100dvh;
+  width: 100vw;
   max-width: 480px;
-  position: relative; overflow: hidden;
+  min-height: 100vh; min-height: 100dvh;
+  position: relative;
   box-shadow: 0 0 60px rgba(0,0,0,0.8);
   background:
     radial-gradient(ellipse at 18% 12%, rgba(74,31,79,0.35), transparent 55%),
@@ -53,14 +58,23 @@ body.wide #app { max-width: none; box-shadow: none; }
 #app > * { position: relative; z-index: 1; }
 
 /* ===== 스크린 / 모달 공통 ===== */
-.screen, .modal {
-  position: absolute; inset: 0;
+.screen {
   display: none;
   flex-direction: column;
-  background: #0a0a0c;
+  min-height: 100vh; min-height: 100dvh;
+  background: transparent;
 }
-.screen.active, .modal.active { display: flex; }
-.modal { z-index: 50; background: rgba(10,10,12,0.97); }
+.screen.active { display: flex; }
+.modal {
+  position: fixed; top: 0; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 480px;
+  display: none;
+  flex-direction: column;
+  background: rgba(10,10,12,0.97);
+  z-index: 50;
+}
+.modal.active { display: flex; }
+body.wide .modal { max-width: none; }
 
 .top-bar, .modal-bar, .zone-bar {
   display: flex; align-items: center; gap: 8px;
@@ -200,7 +214,7 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 .map-actions button { flex: 1; }
 
 /* ===== 전투 공통 ===== */
-[data-screen="battle"] { display: none; flex-direction: column; overflow-y: auto; overflow-x: hidden; }
+[data-screen="battle"] { display: none; flex-direction: column; }
 [data-screen="battle"].active { display: flex; }
 
 .battle-top, .battle-bot {
@@ -221,9 +235,11 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
     #07070a;
 }
 .clash-svg {
-  position: absolute; inset: 0; width: 100%; height: 100%;
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
   pointer-events: none; z-index: 10;
 }
+/* 전투 screen이 absolute가 아니라 자연 흐름이라 SVG가 부모(screen) 전체를 덮도록 추가 보장 */
+[data-screen="battle"] { position: relative; }
 
 /* 중앙 무대 배경 — 패턴 + 중심 문장 + 옅은 광채 */
 .battle-mid::before {
@@ -329,11 +345,11 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 }
 .actor.dead { opacity: 0.3; filter: grayscale(1); }
 .actor-portrait {
-  width: 44px; height: 44px; border-radius: 50%;
+  width: 58px; height: 58px; border-radius: 50%;
   background:
     radial-gradient(circle at 35% 30%, #3a3340, #1a1a22 70%);
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px;
+  font-size: 28px;
   border: 1px solid rgba(216,169,87,0.3);
   box-shadow: inset 0 0 12px rgba(0,0,0,0.6), 0 0 6px rgba(216,169,87,0.1);
 }
@@ -359,9 +375,9 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 #player-actors .speed-orbs { margin-bottom: 4px; }
 #enemy-actors .speed-orbs { margin-top: 4px; }
 .speed-orb {
-  width: 22px; height: 22px; border-radius: 50%;
+  width: 28px; height: 28px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 12px; font-weight: 800; font-family: 'Courier New', monospace;
+  font-size: 14px; font-weight: 800; font-family: 'Courier New', monospace;
   color: #f0d9a5;
   background: radial-gradient(circle at 35% 30%, #3a2810, #1a1208 70%);
   border: 1.5px solid #6a5530;
@@ -433,7 +449,7 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 }
 .card-slot {
   position: relative; flex: 0 0 auto;
-  width: 100px; height: 140px;
+  width: 116px; height: 156px;
   background: #15151a; border: 1px dashed #34343c; border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   scroll-snap-align: start;

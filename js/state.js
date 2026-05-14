@@ -35,7 +35,7 @@ export function startNewRun({ partyIds = ['protagonist', 'scholar'], seed = Date
     party,
     deck,
     relics: [],
-    gold: 50,
+    gold: 80,
     map: generateAct(1, rng),
     inBattle: null,
     selectedActorId: party[0].id,

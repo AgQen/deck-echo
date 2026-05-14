@@ -16,6 +16,7 @@ import { placeCard, removeCard, engageActor, disengageActor, routeEnemySlot, cle
 import { renderMap, openReward } from './map.js';
 import { xpToNext, LEVEL_CAP, LEVEL_THRESHOLDS } from '../data/progression.js';
 import { RELICS } from '../data/relics.js';
+import { STATUSES as STATUS_DEFS } from '../data/statuses.js';
 
 let selectedActorId = null;
 let selectedEnemyId = null;
@@ -134,12 +135,20 @@ function renderActorRow(sel, actors, selId, onSelect) {
 
     // 적: 오브가 portrait 아래 (캐릭터 발치)
     if (a.side === 'enemy') div.appendChild(orbs);
-    // 상태이상 칩
+    // 상태이상 칩 (호버: title 툴팁, 탭: 설명 토스트)
     if (a.statuses && Object.keys(a.statuses).length) {
       const chips = el('div', { class: 'actor-status-row' });
       for (const [k, v] of Object.entries(a.statuses)) {
         const cls = k === '흐트러짐' ? 'status-chip disorder' : 'status-chip bad';
-        chips.appendChild(el('span', { class: cls, text: `${k}${v > 1 ? ' ' + v : ''}` }));
+        const def = STATUS_DEFS?.[k];
+        const desc = def?.desc || k;
+        const chip = el('span', { class: cls, text: `${k}${v > 1 ? ' ' + v : ''}` });
+        chip.title = `${k} ${v} — ${desc}`;
+        chip.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          toast(`${k} ${v}: ${desc}`, 2400);
+        });
+        chips.appendChild(chip);
       }
       div.appendChild(chips);
     }
@@ -478,9 +487,16 @@ function drawClashLines() {
   // 호환을 위해 avatarEl을 endpointEl 폴백으로 alias
   function avatarEl(side, actorId) { return endpointEl(side, actorId); }
 
-  // ── 1) 내 캐릭터 측 라인 (캐릭터 아바타 → 적 아바타)
+  // ── 1) 내 캐릭터 측 라인
+  //     교전 중이고 상대 적의 슬롯 중 하나라도 나를 향해 있으면 노란 곡선 (상호)
+  //     교전 중이지만 상대가 반응 안 함 (스틸당함 등) → 빨간 일방 화살표
+  //     교전 없음 → 빨간 일방 화살표 (가장 왼쪽 적)
   const firstEnemy = enemies.find(e => !e.dead);
   const firstPlayer = players.find(p => !p.dead);
+
+  function enemyReciprocates(enemy, playerId) {
+    return enemy.slots.some(s => s.targetPlayerId === playerId);
+  }
 
   for (const p of players) {
     if (p.dead) continue;
@@ -488,7 +504,11 @@ function drawClashLines() {
     if (!hasAttack) continue;
     if (p.targetActorId) {
       const target = enemies.find(e => e.id === p.targetActorId && !e.dead);
-      if (target) drawClashCurve(avatarEl('player', p.id), avatarEl('enemy', target.id));
+      if (target) {
+        const mutual = enemyReciprocates(target, p.id);
+        if (mutual) drawClashCurve(avatarEl('player', p.id), avatarEl('enemy', target.id));
+        else        drawOnewayArrow(avatarEl('player', p.id), avatarEl('enemy', target.id));
+      }
     } else if (firstEnemy) {
       drawOnewayArrow(avatarEl('player', p.id), avatarEl('enemy', firstEnemy.id));
     }
@@ -842,9 +862,10 @@ function endBattle(battle) {
     const isElite = node?.type === 'elite';
     const isNormal = node?.type === 'battle';
     let gold = 0;
-    if (isNormal) gold = 18 + Math.floor(battle.rng() * 12);
-    if (isElite) gold = 40 + Math.floor(battle.rng() * 20);
-    if (isBoss) gold = 80 + Math.floor(battle.rng() * 30);
+    const actMult = 1.0 + ((run.act || 1) - 1) * 0.15;
+    if (isNormal) gold = Math.round((28 + Math.floor(battle.rng() * 16)) * actMult);
+    if (isElite)  gold = Math.round((60 + Math.floor(battle.rng() * 25)) * actMult);
+    if (isBoss)   gold = Math.round((130 + Math.floor(battle.rng() * 40)) * actMult);
     // 카드 선택지
     let cards = [];
     if (isNormal || isElite || isBoss) {
