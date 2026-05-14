@@ -212,7 +212,7 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 .battle-bot { border-top: 1px solid #2a2a30; }
 
 .battle-mid {
-  flex: 1 0 160px; min-height: 160px; position: relative;
+  flex: 1 1 260px; min-height: 200px; position: relative;
   overflow: hidden;
   border-top: 1px solid rgba(216,169,87,0.18);
   border-bottom: 1px solid rgba(216,169,87,0.18);
@@ -516,6 +516,16 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 .card-slot.routed {
   border-color: #f0c860;
   box-shadow: 0 0 0 1px #f0c860, 0 0 14px rgba(240,200,96,0.4);
+}
+/* 적 공격이 들어올 방어 슬롯 — 청록 강조 (들어옴 표시) */
+.card-slot.defense-incoming {
+  border-color: #6bc6c0;
+  box-shadow: 0 0 0 1px #6bc6c0, 0 0 14px rgba(107,198,192,0.55);
+  animation: defense-blink 1.2s ease-in-out infinite;
+}
+@keyframes defense-blink {
+  0%,100% { box-shadow: 0 0 0 1px #6bc6c0, 0 0 10px rgba(107,198,192,0.4); }
+  50%     { box-shadow: 0 0 0 2px #6bc6c0, 0 0 18px rgba(107,198,192,0.85); }
 }
 
 /* ===== 하단 액션 바 ===== */

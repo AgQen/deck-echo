@@ -479,9 +479,23 @@ function drawClashLines() {
   }
 
   // ── 2) 적 측 라인 — 각 적 슬롯이 어느 플레이어를 노리는지
-  //     선택된 적: 슬롯 단위 라인 (적 카드 → 내 사람 아바타)
-  //     비선택 적: 슬롯들의 타겟이 다를 수도 있지만 화면에 카드는 안 보이므로 아바타 단위 요약
+  //     대상 플레이어가 현재 선택된 캐릭터고 그 플레이어에 방어 카드가 있으면
+  //     라인을 첫 방어 슬롯으로 보냄 (방어가 합으로 받아낼 것을 시각화)
   const selEnemy = enemies.find(e => e.id === selectedEnemyId);
+  const selPlayer = players.find(p => p.id === selectedActorId);
+  function playerSlotDefenseEl(p, slotIdx) {
+    if (!p || p.id !== selectedActorId) return null;
+    return document.querySelector(`#player-cards .card-slot:nth-child(${slotIdx + 1})`);
+  }
+  function findFirstDefenseSlotIdx(p) {
+    if (!p) return -1;
+    for (let i = 0; i < p.slots.length; i++) {
+      const s = p.slots[i];
+      if (!s.card) continue;
+      if (s.card.actions.some(a => a.type !== '공격')) return i;
+    }
+    return -1;
+  }
   if (selEnemy && !selEnemy.dead) {
     for (let si = 0; si < selEnemy.slots.length; si++) {
       const slot = selEnemy.slots[si];
@@ -493,12 +507,20 @@ function drawClashLines() {
         : firstPlayer;
       if (!targetPlayer) continue;
       const srcEl = document.querySelector(`#enemy-cards .card-slot:nth-child(${si + 1})`);
-      const dstAv = avatarEl('player', targetPlayer.id);
+      // 대상 플레이어가 화면에 표시 중이고 방어 카드 보유 시 → 그 방어 슬롯이 받아냄
+      let dstEl = avatarEl('player', targetPlayer.id);
+      if (targetPlayer.id === selectedActorId) {
+        const defIdx = findFirstDefenseSlotIdx(targetPlayer);
+        if (defIdx >= 0) {
+          const defEl = playerSlotDefenseEl(targetPlayer, defIdx);
+          if (defEl) { dstEl = defEl; defEl.classList.add('defense-incoming'); }
+        }
+      }
       if (slot.targetPlayerId) {
         srcEl?.classList.add('routed-source');
-        drawClashCurve(srcEl, dstAv);
+        drawClashCurve(srcEl, dstEl);
       } else {
-        drawOnewayArrow(srcEl, dstAv);
+        drawOnewayArrow(srcEl, dstEl);
       }
     }
   }
