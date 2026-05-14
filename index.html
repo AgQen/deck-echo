@@ -58,16 +58,16 @@
     <!-- 전투 -->
     <section class="screen" data-screen="battle">
       <svg class="clash-svg" id="clash-svg" preserveAspectRatio="none"></svg>
-      <!-- 상단: 적 -->
+      <!-- 상단: 적 — 카드 → 정보 → 아바타 (중앙 쪽이 아바타) -->
       <div class="battle-top" id="zone-enemy">
         <div class="zone-bar">
           <button class="icon-btn" data-action="battle-settings">⚙</button>
           <div class="zone-title">적</div>
           <button class="icon-btn" data-action="battle-log">📜</button>
         </div>
-        <div class="actor-row" id="enemy-actors"></div>
-        <div class="selected-info" id="enemy-info"></div>
         <div class="card-rail enemy-rail" id="enemy-cards"></div>
+        <div class="selected-info" id="enemy-info"></div>
+        <div class="actor-row" id="enemy-actors"></div>
       </div>
 
       <!-- 중단: 상호작용 -->
@@ -83,7 +83,7 @@
         <div class="battle-bottom-bar">
           <button class="icon-btn" data-action="open-items">🎒</button>
           <button class="btn-primary big" data-action="execute">▶ 시작</button>
-          <button class="icon-btn" data-action="open-settings">⚙</button>
+          <button class="icon-btn" data-action="battle-log">📜</button>
         </div>
       </div>
     </section>
