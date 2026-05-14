@@ -381,8 +381,12 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 }
 .card.dragging { z-index: 100; opacity: 0.9; transform: scale(1.05); }
 
-.enemy-rail .card-slot { background: #1a1518; border-color: #4a3030; }
+.enemy-rail .card-slot { background: #1a1518; border-color: #4a3030; cursor: pointer; }
 .enemy-rail .card-speed { color: #c08080; }
+.card-slot.routed {
+  border-color: #f0c860;
+  box-shadow: 0 0 0 1px #f0c860, 0 0 14px rgba(240,200,96,0.4);
+}
 
 /* ===== 하단 액션 바 ===== */
 .battle-bottom-bar {

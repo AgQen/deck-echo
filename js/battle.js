@@ -172,9 +172,8 @@ export function removeCard(battle, playerId, slotIdx) {
   }
 }
 
-// 캐릭터 교전 — 양방향(상호) 짝짓기.
-// 내 캐릭터.targetActorId = 적.id, 적.targetActorId = 내 캐릭터.id 동시에 세팅.
-// 이전 교전이 있던 쪽은 풀린다 (1:1 교전).
+// 내 캐릭터 교전 — 단방향. 내 캐릭터.targetActorId = 적.id 만 세팅.
+// 자동 해제 없음 (같은 캐릭터에 새 교전 잡으면 기존 값만 덮어쓴다).
 export function engageActor(battle, src, dst) {
   if (src.side !== 'player') return { ok: false, reason: 'src_not_player' };
   if (dst.side !== 'enemy')  return { ok: false, reason: 'dst_not_enemy' };
@@ -182,30 +181,31 @@ export function engageActor(battle, src, dst) {
   const dstActor = getActor(battle, dst.side, dst.actorId);
   if (!srcActor || !dstActor) return { ok: false, reason: 'no_actor' };
   if (dstActor.dead) return { ok: false, reason: 'dead' };
-  // 기존 교전 끊기
-  if (srcActor.targetActorId) {
-    const prevEnemy = battle.enemies.find(e => e.id === srcActor.targetActorId);
-    if (prevEnemy) prevEnemy.targetActorId = null;
-  }
-  if (dstActor.targetActorId) {
-    const prevPlayer = battle.players.find(p => p.id === dstActor.targetActorId);
-    if (prevPlayer) prevPlayer.targetActorId = null;
-  }
   srcActor.targetActorId = dstActor.id;
-  dstActor.targetActorId = srcActor.id;
   return { ok: true };
 }
 
 export function disengageActor(battle, src) {
   const actor = getActor(battle, src.side, src.actorId);
-  if (!actor) return;
-  if (actor.targetActorId) {
-    const other = src.side === 'player'
-      ? battle.enemies.find(e => e.id === actor.targetActorId)
-      : battle.players.find(p => p.id === actor.targetActorId);
-    if (other && other.targetActorId === actor.id) other.targetActorId = null;
-  }
-  actor.targetActorId = null;
+  if (actor) actor.targetActorId = null;
+}
+
+// 적 카드(슬롯) → 내 캐릭터 라우팅. 그 슬롯의 공격이 그 플레이어를 노림.
+// 자동 해제 없음 (같은 슬롯 재라우팅 시에만 덮어씀).
+export function routeEnemySlot(battle, enemyId, slotIdx, playerId) {
+  const enemy = battle.enemies.find(e => e.id === enemyId);
+  const player = battle.players.find(p => p.id === playerId);
+  if (!enemy || !player || player.dead) return { ok: false, reason: 'no_actor' };
+  const slot = enemy.slots[slotIdx];
+  if (!slot || !slot.card) return { ok: false, reason: 'no_slot' };
+  slot.targetPlayerId = player.id;
+  return { ok: true };
+}
+
+export function clearEnemySlotRoute(battle, enemyId, slotIdx) {
+  const enemy = battle.enemies.find(e => e.id === enemyId);
+  const slot = enemy?.slots[slotIdx];
+  if (slot) slot.targetPlayerId = null;
 }
 
 // 구버전 슬롯 단위 합 API (호환용. UI는 더이상 호출하지 않음)
@@ -275,13 +275,20 @@ export async function executeTurn(battle, hooks = {}) {
   endTurn(battle);
 }
 
-// 캐릭터 교전 기반 공격 처리.
-//   actor.targetActorId 가 설정돼 있으면 그 적이 우선 타겟, 없으면 가장 왼쪽 살아있는 적.
+// 공격 처리.
+//   적: slot.targetPlayerId 우선 (적 카드 → 내 사람 라우팅), 없으면 첫 살아있는 플레이어
+//   내: actor.targetActorId 우선 (캐릭터 교전), 없으면 첫 살아있는 적
 async function resolveAttack(battle, ev, defensePools, hooks, log) {
   const { side, actor, slotIdx, actionIdx, action } = ev;
   const oppList = side === 'player' ? battle.enemies : battle.players;
   let target = null;
-  if (actor.targetActorId) {
+  if (side === 'enemy') {
+    const slot = actor.slots[slotIdx];
+    if (slot?.targetPlayerId) {
+      target = oppList.find(o => o.id === slot.targetPlayerId && !o.dead);
+    }
+  }
+  if (!target && actor.targetActorId) {
     target = oppList.find(o => o.id === actor.targetActorId && !o.dead);
   }
   if (!target) target = oppList.find(o => !o.dead);
