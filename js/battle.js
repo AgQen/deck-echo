@@ -109,13 +109,17 @@ export function gainLight(battle, playerId, amount) {
 }
 
 // 모든 행위자의 슬롯 속도 굴림 (턴 시작 / 새 턴 준비)
+// slot 구조:
+//   { speed, card, linkedTo?, targetPlayerId? }
+//   linkedTo: {actorId, slotIdx} — 내 슬롯이 적의 어느 슬롯과 짝지어졌는지 (양측)
+//   targetPlayerId: 적 슬롯이 어떤 플레이어를 노리는지 (적 측 한정)
 export function rollAllSpeeds(battle) {
   for (const a of [...battle.players, ...battle.enemies]) {
     a.slots = [];
     if (a.disordered || a.dead) continue;
     for (let i = 0; i < a.actionSlots; i++) {
       const sp = battle.rng.int(a.speedDice.min, a.speedDice.max);
-      a.slots.push({ speed: sp, card: null, linkedTo: null });
+      a.slots.push({ speed: sp, card: null, linkedTo: null, targetPlayerId: null });
     }
   }
 }
@@ -155,6 +159,12 @@ export function placeCard(battle, playerId, slotIdx, cardId) {
   }
   player.light = available - cost;
   hand.splice(idx, 1);
+  // 슬롯 교체 시 슬롯-슬롯 합 해제 + 적 쪽 라우팅도 같이 끊음
+  if (player.slots[slotIdx].linkedTo) {
+    const e = battle.enemies.find(en => en.id === player.slots[slotIdx].linkedTo.actorId);
+    const es = e?.slots[player.slots[slotIdx].linkedTo.slotIdx];
+    if (es && es.targetPlayerId === playerId) es.targetPlayerId = null;
+  }
   player.slots[slotIdx].card = {
     id: cardId,
     name: card.name,
@@ -223,7 +233,6 @@ export function disengageActor(battle, src) {
 }
 
 // 적 카드(슬롯) → 내 캐릭터 라우팅. 그 슬롯의 공격이 그 플레이어를 노림.
-// 자동 해제 없음 (같은 슬롯 재라우팅 시에만 덮어씀).
 export function routeEnemySlot(battle, enemyId, slotIdx, playerId) {
   const enemy = battle.enemies.find(e => e.id === enemyId);
   const player = battle.players.find(p => p.id === playerId);
@@ -238,6 +247,33 @@ export function clearEnemySlotRoute(battle, enemyId, slotIdx) {
   const enemy = battle.enemies.find(e => e.id === enemyId);
   const slot = enemy?.slots[slotIdx];
   if (slot) slot.targetPlayerId = null;
+}
+
+// 슬롯 ↔ 슬롯 짝짓기 — 가장 세밀한 합. 양측 slot 모두 linkedTo 세팅.
+//   playerSlot.linkedTo = {actorId: enemyId, slotIdx}
+//   enemySlot.targetPlayerId = playerId (호환)
+export function linkSlotToSlot(battle, playerRef, enemyRef) {
+  const player = battle.players.find(p => p.id === playerRef.actorId);
+  const enemy  = battle.enemies.find(e => e.id === enemyRef.actorId);
+  if (!player || !enemy || player.dead || enemy.dead) return { ok: false, reason: 'no_actor' };
+  const pSlot = player.slots[playerRef.slotIdx];
+  const eSlot = enemy.slots[enemyRef.slotIdx];
+  if (!pSlot || !eSlot) return { ok: false, reason: 'no_slot' };
+  pSlot.linkedTo = { actorId: enemy.id, slotIdx: enemyRef.slotIdx };
+  eSlot.targetPlayerId = player.id;
+  return { ok: true };
+}
+
+export function unlinkPlayerSlot(battle, playerId, slotIdx) {
+  const player = battle.players.find(p => p.id === playerId);
+  const slot = player?.slots[slotIdx];
+  if (!slot) return;
+  if (slot.linkedTo) {
+    const enemy = battle.enemies.find(e => e.id === slot.linkedTo.actorId);
+    const eSlot = enemy?.slots[slot.linkedTo.slotIdx];
+    if (eSlot && eSlot.targetPlayerId === playerId) eSlot.targetPlayerId = null;
+  }
+  slot.linkedTo = null;
 }
 
 // 구버전 슬롯 단위 합 API (호환용. UI는 더이상 호출하지 않음)
@@ -307,22 +343,29 @@ export async function executeTurn(battle, hooks = {}) {
   endTurn(battle);
 }
 
-// 공격 처리.
-//   적: slot.targetPlayerId 우선 (적 카드 → 내 사람 라우팅), 없으면 첫 살아있는 플레이어
-//   내: actor.targetActorId 우선 (캐릭터 교전), 없으면 첫 살아있는 적
+// 공격 처리. 타겟 우선순위:
+//   1) 내 슬롯 linkedTo (가장 세밀한 슬롯-슬롯 짝짓기)
+//   2) 적 슬롯 targetPlayerId (적 → 내 사람 라우팅) — 적 측 한정
+//   3) actor.targetActorId (캐릭터 교전)
+//   4) 가장 왼쪽 살아있는 상대
 async function resolveAttack(battle, ev, defensePools, hooks, log) {
   const { side, actor, slotIdx, actionIdx, action } = ev;
   const oppList = side === 'player' ? battle.enemies : battle.players;
   let target = null;
-  if (side === 'enemy') {
-    const slot = actor.slots[slotIdx];
-    if (slot?.targetPlayerId) {
-      target = oppList.find(o => o.id === slot.targetPlayerId && !o.dead);
-    }
+  const slot = actor.slots[slotIdx];
+  // 1) 슬롯-슬롯 (플레이어 측)
+  if (side === 'player' && slot?.linkedTo) {
+    target = oppList.find(o => o.id === slot.linkedTo.actorId && !o.dead);
   }
+  // 2) 적 측 슬롯 라우팅
+  if (!target && side === 'enemy' && slot?.targetPlayerId) {
+    target = oppList.find(o => o.id === slot.targetPlayerId && !o.dead);
+  }
+  // 3) 캐릭터 교전
   if (!target && actor.targetActorId) {
     target = oppList.find(o => o.id === actor.targetActorId && !o.dead);
   }
+  // 4) 폴백
   if (!target) target = oppList.find(o => !o.dead);
   if (!target) return;
 

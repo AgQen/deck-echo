@@ -357,6 +357,85 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
   border-color: var(--gold-warm);
   box-shadow: inset 0 0 12px rgba(0,0,0,0.6), 0 0 14px rgba(240,200,96,0.4);
 }
+/* ===== 캐릭터별 포트레이트 변주 (원본 추상 디자인) ===== */
+.actor[data-actor-id="protagonist"] .actor-portrait {
+  background: radial-gradient(circle at 30% 25%, #6a5230, #1a1208 70%);
+  border-color: rgba(240,200,96,0.6);
+}
+.actor[data-actor-id="scholar"] .actor-portrait {
+  background: radial-gradient(circle at 30% 25%, #4a3a6a, #1a0e2a 70%);
+  border-color: rgba(160,120,224,0.6);
+}
+.actor[data-actor-id="scout"] .actor-portrait {
+  background: radial-gradient(circle at 30% 25%, #3a5a40, #0e1a14 70%);
+  border-color: rgba(120,200,140,0.6);
+}
+.actor[data-actor-id="husk"] .actor-portrait {
+  background: radial-gradient(circle at 30% 25%, #5a2820, #1a0808 70%);
+  border-color: rgba(200,80,60,0.6);
+}
+.actor[data-actor-id="cultist"] .actor-portrait {
+  background: radial-gradient(circle at 30% 25%, #5a3a1a, #1a0e08 70%);
+  border-color: rgba(240,160,60,0.6);
+}
+.actor[data-actor-id="watcher"] .actor-portrait {
+  background:
+    radial-gradient(circle at 40% 40%, #2a4a6a 0 30%, transparent 32%),
+    radial-gradient(circle at 70% 35%, #2a4a6a 0 22%, transparent 24%),
+    radial-gradient(circle at 30% 70%, #2a4a6a 0 18%, transparent 20%),
+    radial-gradient(circle at 50% 60%, #0e1a2a, #050810 70%);
+  border-color: rgba(120,180,240,0.6);
+}
+.actor[data-actor-id="thrall"] .actor-portrait {
+  background: radial-gradient(circle at 30% 25%, #1a3a5a, #050e1a 70%);
+  border-color: rgba(80,160,200,0.6);
+}
+.actor[data-actor-id="spawn"] .actor-portrait {
+  background:
+    radial-gradient(circle at 30% 30%, #4a1a4a, transparent 50%),
+    radial-gradient(circle at 70% 70%, #2a0e3a, transparent 50%),
+    radial-gradient(circle at 50% 50%, #0e0510, #000 70%);
+  border-color: rgba(180,80,200,0.6);
+}
+.actor[data-actor-id="shoggothLet"] .actor-portrait {
+  background:
+    radial-gradient(circle at 25% 25%, #5a1a5a, transparent 35%),
+    radial-gradient(circle at 65% 30%, #3a1a4a, transparent 30%),
+    radial-gradient(circle at 50% 70%, #2a0a3a, transparent 50%),
+    #050008;
+  border-color: rgba(200,100,220,0.7);
+  animation: shoggoth-bubble 3s ease-in-out infinite;
+}
+@keyframes shoggoth-bubble {
+  0%,100% { filter: hue-rotate(0deg); }
+  50%     { filter: hue-rotate(20deg) brightness(1.1); }
+}
+.actor[data-actor-id="bossWeaver"] .actor-portrait {
+  background:
+    conic-gradient(from 0deg, #3a1414, #5a2828, #3a1414, #5a2828, #3a1414);
+  border-color: rgba(240,80,80,0.8);
+  border-width: 2px;
+}
+.actor[data-actor-id="bossTheRitualist"] .actor-portrait {
+  background:
+    radial-gradient(circle at 50% 50%, #5a1a3a 0 20%, transparent 22%),
+    conic-gradient(from 45deg, #3a0e2a, #5a1a3a, #3a0e2a, #5a1a3a, #3a0e2a);
+  border-color: rgba(240,80,180,0.8);
+  border-width: 2px;
+}
+.actor[data-actor-id="bossSleeperOfTheDeep"] .actor-portrait {
+  background:
+    radial-gradient(circle at 30% 30%, #1a3a5a, transparent 40%),
+    radial-gradient(circle at 70% 70%, #2a0e4a, transparent 40%),
+    radial-gradient(circle at 50% 50%, #0a1a2a, #000 80%);
+  border-color: rgba(140,200,240,0.8);
+  border-width: 2px;
+  animation: sleeper-pulse 2.4s ease-in-out infinite;
+}
+@keyframes sleeper-pulse {
+  0%,100% { box-shadow: inset 0 0 12px rgba(0,0,0,0.6), 0 0 12px rgba(140,200,240,0.4); }
+  50%     { box-shadow: inset 0 0 20px rgba(0,0,0,0.8), 0 0 28px rgba(140,200,240,0.7); }
+}
 .actor.engaged { box-shadow: 0 0 0 2px #f0c860, 0 4px 14px rgba(240,200,96,0.45); }
 .actor.engaged-target { box-shadow: 0 0 0 2px #e06060, 0 4px 14px rgba(224,96,96,0.45); }
 .actor.link-source { animation: link-pulse 1.0s ease-in-out infinite; }

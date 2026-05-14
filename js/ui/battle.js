@@ -12,7 +12,7 @@ import { state } from '../state.js';
 import { saveAll } from '../storage.js';
 import { CARDS, cardCost } from '../data/cards.js';
 import { PROPERTIES } from '../data/properties.js';
-import { placeCard, removeCard, engageActor, disengageActor, routeEnemySlot, clearEnemySlotRoute, executeTurn } from '../battle.js';
+import { placeCard, removeCard, engageActor, disengageActor, routeEnemySlot, clearEnemySlotRoute, linkSlotToSlot, unlinkPlayerSlot, executeTurn } from '../battle.js';
 import { renderMap, openReward } from './map.js';
 import { xpToNext, LEVEL_CAP, LEVEL_THRESHOLDS } from '../data/progression.js';
 import { RELICS } from '../data/relics.js';
@@ -89,7 +89,7 @@ function renderActorRow(sel, actors, selId, onSelect) {
       // 그냥 모드 표시는 link-source만 사용
     }
     if (linkMode && linkMode.actorId === a.id && linkMode.slotIdx == null) cls += ' link-source';
-    const div = el('div', { class: cls });
+    const div = el('div', { class: cls, 'data-actor-id': a.id });
 
     // 속도 오브 — 합 연결용 아이콘. 양측 모두 "전장 앞쪽"(중앙)으로 향함.
     //   적: portrait 아래 (중앙 쪽), 플레이어: portrait 위 (중앙 쪽)
@@ -347,9 +347,12 @@ function onCardClick(ref) {
   const sameRef = (a, b) =>
     a && b && a.side === b.side && a.actorId === b.actorId && a.slotIdx === b.slotIdx;
 
-  // A) linkMode 있고 반대편 탭 → 짝짓기 (혹은 같은 짝 재선택 시 해제)
-  //    핵심: 캐릭터 교전은 무조건 덮어씀 (스틸 가능).
-  //    같은 페어 재탭하면 해당 짝짓기만 해제.
+  // A) linkMode 있고 반대편 탭 → 짝짓기
+  //    분기:
+  //      양측 다 slotIdx 있음 → 슬롯-슬롯 짝짓기 (오브-오브)
+  //      한쪽만 slotIdx (보통 적측만)   → 적 슬롯 라우팅 + 캐릭터 교전
+  //      둘 다 없음                     → 캐릭터 교전
+  //    같은 페어 재탭하면 그 짝만 해제 (토글).
   if (linkMode && linkMode.side !== ref.side) {
     const playerRef = linkMode.side === 'player' ? linkMode : ref;
     const enemyRef  = linkMode.side === 'enemy'  ? linkMode : ref;
@@ -357,19 +360,29 @@ function onCardClick(ref) {
     const enemy  = battle.enemies.find(e => e.id === enemyRef.actorId);
     if (!player || !enemy) { linkMode = null; renderBattle(); return; }
 
-    // 적 슬롯 단위 라우팅이 활성화될 짝짓기인지
-    const isSlotRoute = enemyRef.slotIdx != null;
+    const isSlotToSlot = playerRef.slotIdx != null && enemyRef.slotIdx != null;
 
-    if (isSlotRoute) {
-      const slot = enemy.slots[enemyRef.slotIdx];
-      if (slot?.targetPlayerId === player.id) {
-        // 같은 슬롯-같은 플레이어 재탭 → 라우팅 해제 (캐릭터 교전은 유지)
+    if (isSlotToSlot) {
+      // 슬롯 ↔ 슬롯
+      const pSlot = player.slots[playerRef.slotIdx];
+      const eSlot = enemy.slots[enemyRef.slotIdx];
+      const alreadyLinked = pSlot?.linkedTo?.actorId === enemy.id && pSlot?.linkedTo?.slotIdx === enemyRef.slotIdx;
+      if (alreadyLinked) {
+        unlinkPlayerSlot(battle, player.id, playerRef.slotIdx);
+        toast('슬롯 합 해제');
+      } else {
+        const res = linkSlotToSlot(battle, playerRef, enemyRef);
+        if (!res.ok) toast('연결 불가');
+        else toast(`${player.name} 슬롯 ↔ ${enemy.name} 슬롯`);
+      }
+    } else if (enemyRef.slotIdx != null) {
+      // 적 슬롯만 (플레이어 측은 아바타)
+      const eSlot = enemy.slots[enemyRef.slotIdx];
+      if (eSlot?.targetPlayerId === player.id) {
         clearEnemySlotRoute(battle, enemy.id, enemyRef.slotIdx);
         toast(`${enemy.name} 카드 라우팅 해제`);
       } else {
-        // 스틸/재할당
         routeEnemySlot(battle, enemy.id, enemyRef.slotIdx, player.id);
-        // 캐릭터 교전도 동시에 (이미 잡혀 있어도 덮어쓰기)
         engageActor(battle, { side: 'player', actorId: player.id }, { side: 'enemy', actorId: enemy.id });
         toast(`${player.name} ↔ ${enemy.name} 교전 + 카드 라우팅`);
       }
@@ -487,30 +500,46 @@ function drawClashLines() {
   // 호환을 위해 avatarEl을 endpointEl 폴백으로 alias
   function avatarEl(side, actorId) { return endpointEl(side, actorId); }
 
-  // ── 1) 내 캐릭터 측 라인
-  //     교전 중이고 상대 적의 슬롯 중 하나라도 나를 향해 있으면 노란 곡선 (상호)
-  //     교전 중이지만 상대가 반응 안 함 (스틸당함 등) → 빨간 일방 화살표
-  //     교전 없음 → 빨간 일방 화살표 (가장 왼쪽 적)
+  // ── 1) 내 캐릭터 측 라인 (슬롯 단위 우선)
   const firstEnemy = enemies.find(e => !e.dead);
   const firstPlayer = players.find(p => !p.dead);
 
-  function enemyReciprocates(enemy, playerId) {
-    return enemy.slots.some(s => s.targetPlayerId === playerId);
-  }
-
   for (const p of players) {
     if (p.dead) continue;
-    const hasAttack = p.slots.some(s => s.card && s.card.actions.some(a => a.type === '공격'));
-    if (!hasAttack) continue;
-    if (p.targetActorId) {
-      const target = enemies.find(e => e.id === p.targetActorId && !e.dead);
-      if (target) {
-        const mutual = enemyReciprocates(target, p.id);
-        if (mutual) drawClashCurve(avatarEl('player', p.id), avatarEl('enemy', target.id));
-        else        drawOnewayArrow(avatarEl('player', p.id), avatarEl('enemy', target.id));
+    // 슬롯별로 라인 결정
+    for (let si = 0; si < p.slots.length; si++) {
+      const slot = p.slots[si];
+      if (!slot.card) continue;
+      const hasAttack = slot.card.actions.some(a => a.type === '공격');
+      const srcOrb = orbEl('player', p.id, si);
+      if (!srcOrb) continue;
+
+      // 1-a) 슬롯-슬롯 짝지어진 경우 → 정확한 오브로 노란 곡선
+      if (slot.linkedTo) {
+        const enemy = enemies.find(e => e.id === slot.linkedTo.actorId && !e.dead);
+        if (enemy) {
+          const dstOrb = orbEl('enemy', enemy.id, slot.linkedTo.slotIdx);
+          if (dstOrb) { drawClashCurve(srcOrb, dstOrb); continue; }
+        }
       }
-    } else if (firstEnemy) {
-      drawOnewayArrow(avatarEl('player', p.id), avatarEl('enemy', firstEnemy.id));
+      if (!hasAttack) continue; // 방어 카드만 있으면 라인 없음 (반응 대기)
+
+      // 1-b) 캐릭터 교전 폴백
+      if (p.targetActorId) {
+        const target = enemies.find(e => e.id === p.targetActorId && !e.dead);
+        if (target) {
+          const mutual = target.slots.some(s => s.targetPlayerId === p.id);
+          const dst = orbEl('enemy', target.id, 0) || avatarEl('enemy', target.id);
+          if (mutual) drawClashCurve(srcOrb, dst);
+          else        drawOnewayArrow(srcOrb, dst);
+          continue;
+        }
+      }
+      // 1-c) 기본 타겟 (가장 왼쪽 적)
+      if (firstEnemy) {
+        const dst = orbEl('enemy', firstEnemy.id, 0) || avatarEl('enemy', firstEnemy.id);
+        drawOnewayArrow(srcOrb, dst);
+      }
     }
   }
 
