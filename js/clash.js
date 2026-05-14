@@ -129,8 +129,8 @@ export function applyEvents(events, actorA, actorB) {
         if (absorbed > 0) target.statuses.보호막 = shield - absorbed;
         const final = dmg - absorbed;
         target.hp = Math.max(0, target.hp - final);
-        // 공격으로 받은 일부는 정신력에도 영향 (소량)
-        if (!ev.counteredByMental && !ev.fromCounter) {
+        // SP 칩 — 막아낸/반격받은/막힌 공격은 SP 칩 없음 (제대로 막힘)
+        if (!ev.counteredByMental && !ev.fromCounter && !ev.blocked) {
           target.sp = Math.max(0, target.sp - Math.floor(final * 0.25));
         }
       } else if (prop.target === 'sp') {

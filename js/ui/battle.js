@@ -338,70 +338,56 @@ function onCardClick(ref) {
   const sameRef = (a, b) =>
     a && b && a.side === b.side && a.actorId === b.actorId && a.slotIdx === b.slotIdx;
 
-  // A) linkMode 있고 반대편 탭 → 짝짓기
-  //    핵심: 캐릭터 교전(player.targetActorId)은 무조건 잡힌다.
-  //    추가로 적 측 ref가 슬롯 단위면 그 적 슬롯도 라우팅된다.
+  // A) linkMode 있고 반대편 탭 → 짝짓기 (혹은 같은 짝 재선택 시 해제)
+  //    핵심: 캐릭터 교전은 무조건 덮어씀 (스틸 가능).
+  //    같은 페어 재탭하면 해당 짝짓기만 해제.
   if (linkMode && linkMode.side !== ref.side) {
     const playerRef = linkMode.side === 'player' ? linkMode : ref;
     const enemyRef  = linkMode.side === 'enemy'  ? linkMode : ref;
+    const player = battle.players.find(p => p.id === playerRef.actorId);
+    const enemy  = battle.enemies.find(e => e.id === enemyRef.actorId);
+    if (!player || !enemy) { linkMode = null; renderBattle(); return; }
 
-    // 1) 캐릭터 교전 (항상)
-    const engRes = engageActor(battle,
-      { side: 'player', actorId: playerRef.actorId },
-      { side: 'enemy',  actorId: enemyRef.actorId }
-    );
-    // 2) 적 측이 슬롯 단위면 그 슬롯도 라우팅
-    let routed = false;
-    if (engRes.ok && enemyRef.slotIdx != null) {
-      const r = routeEnemySlot(battle, enemyRef.actorId, enemyRef.slotIdx, playerRef.actorId);
-      routed = r.ok;
-    }
-    if (!engRes.ok) {
-      if (engRes.reason === 'dead') toast('이미 죽은 상대');
-      else toast('교전 불가');
+    // 적 슬롯 단위 라우팅이 활성화될 짝짓기인지
+    const isSlotRoute = enemyRef.slotIdx != null;
+
+    if (isSlotRoute) {
+      const slot = enemy.slots[enemyRef.slotIdx];
+      if (slot?.targetPlayerId === player.id) {
+        // 같은 슬롯-같은 플레이어 재탭 → 라우팅 해제 (캐릭터 교전은 유지)
+        clearEnemySlotRoute(battle, enemy.id, enemyRef.slotIdx);
+        toast(`${enemy.name} 카드 라우팅 해제`);
+      } else {
+        // 스틸/재할당
+        routeEnemySlot(battle, enemy.id, enemyRef.slotIdx, player.id);
+        // 캐릭터 교전도 동시에 (이미 잡혀 있어도 덮어쓰기)
+        engageActor(battle, { side: 'player', actorId: player.id }, { side: 'enemy', actorId: enemy.id });
+        toast(`${player.name} ↔ ${enemy.name} 교전 + 카드 라우팅`);
+      }
     } else {
-      const me = battle.players.find(p => p.id === playerRef.actorId);
-      const en = battle.enemies.find(e => e.id === enemyRef.actorId);
-      toast(routed
-        ? `${me?.name} ↔ ${en?.name} 교전 + 카드 라우팅`
-        : `${me?.name} → ${en?.name} 교전`);
+      // 캐릭터 교전 토글
+      if (player.targetActorId === enemy.id) {
+        disengageActor(battle, { side: 'player', actorId: player.id });
+        toast(`${player.name} 교전 해제`);
+      } else {
+        engageActor(battle, { side: 'player', actorId: player.id }, { side: 'enemy', actorId: enemy.id });
+        toast(`${player.name} → ${enemy.name} 교전`);
+      }
     }
     linkMode = null;
     renderBattle();
     return;
   }
 
-  // B) 이미 짝지어진 ref 다시 탭 → 해제
-  if (ref.side === 'enemy' && ref.slotIdx != null) {
-    const enemy = battle.enemies.find(e => e.id === ref.actorId);
-    const slot = enemy?.slots[ref.slotIdx];
-    if (slot?.targetPlayerId) {
-      clearEnemySlotRoute(battle, ref.actorId, ref.slotIdx);
-      linkMode = null;
-      toast('라우팅 해제');
-      renderBattle();
-      return;
-    }
-  }
-  if (ref.side === 'player' && ref.slotIdx == null) {
-    const me = battle.players.find(p => p.id === ref.actorId);
-    if (me?.targetActorId) {
-      disengageActor(battle, { side: 'player', actorId: ref.actorId });
-      linkMode = null;
-      toast(`${me.name} 교전 해제`);
-      renderBattle();
-      return;
-    }
-  }
-
-  // C) 같은 ref 재탭 → 모드 취소
+  // B) 같은 ref 재탭 → 모드 취소 (기존 교전/라우팅은 그대로 유지)
   if (sameRef(linkMode, ref)) {
     linkMode = null;
     renderBattle();
     return;
   }
 
-  // D) 새 모드 (또는 같은 쪽 다른 액터로 전환)
+  // C) 새 모드 (또는 같은 쪽 다른 액터로 전환)
+  //    이미 교전 중이거나 라우팅된 액터/슬롯도 자유롭게 다시 시작점으로 선택 가능 (스틸 진입)
   linkMode = { ...ref };
   haptic(8);
   let msg;

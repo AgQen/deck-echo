@@ -212,7 +212,7 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 .battle-bot { border-top: 1px solid #2a2a30; }
 
 .battle-mid {
-  flex: 1 1 260px; min-height: 200px; position: relative;
+  flex: 0 0 220px; height: 220px; position: relative;
   overflow: hidden;
   border-top: 1px solid rgba(216,169,87,0.18);
   border-bottom: 1px solid rgba(216,169,87,0.18);
@@ -433,7 +433,7 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 }
 .card-slot {
   position: relative; flex: 0 0 auto;
-  width: 92px; height: 124px;
+  width: 100px; height: 140px;
   background: #15151a; border: 1px dashed #34343c; border-radius: 10px;
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
   scroll-snap-align: start;
