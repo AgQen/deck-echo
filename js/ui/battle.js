@@ -339,28 +339,32 @@ function onCardClick(ref) {
     a && b && a.side === b.side && a.actorId === b.actorId && a.slotIdx === b.slotIdx;
 
   // A) linkMode 있고 반대편 탭 → 짝짓기
+  //    핵심: 캐릭터 교전(player.targetActorId)은 무조건 잡힌다.
+  //    추가로 적 측 ref가 슬롯 단위면 그 적 슬롯도 라우팅된다.
   if (linkMode && linkMode.side !== ref.side) {
     const playerRef = linkMode.side === 'player' ? linkMode : ref;
     const enemyRef  = linkMode.side === 'enemy'  ? linkMode : ref;
 
-    if (enemyRef.slotIdx != null) {
-      // 적 슬롯 → 내 캐릭터 라우팅
-      const res = routeEnemySlot(battle, enemyRef.actorId, enemyRef.slotIdx, playerRef.actorId);
-      if (!res.ok) toast('연결 불가');
-      else {
-        const en = battle.enemies.find(e => e.id === enemyRef.actorId);
-        const me = battle.players.find(p => p.id === playerRef.actorId);
-        toast(`${en?.name} 카드 → ${me?.name}`);
-      }
+    // 1) 캐릭터 교전 (항상)
+    const engRes = engageActor(battle,
+      { side: 'player', actorId: playerRef.actorId },
+      { side: 'enemy',  actorId: enemyRef.actorId }
+    );
+    // 2) 적 측이 슬롯 단위면 그 슬롯도 라우팅
+    let routed = false;
+    if (engRes.ok && enemyRef.slotIdx != null) {
+      const r = routeEnemySlot(battle, enemyRef.actorId, enemyRef.slotIdx, playerRef.actorId);
+      routed = r.ok;
+    }
+    if (!engRes.ok) {
+      if (engRes.reason === 'dead') toast('이미 죽은 상대');
+      else toast('교전 불가');
     } else {
-      // 캐릭터 교전 (avatar-avatar)
-      const res = engageActor(battle, playerRef, { side: 'enemy', actorId: enemyRef.actorId });
-      if (!res.ok) toast('교전 불가');
-      else {
-        const me = battle.players.find(p => p.id === playerRef.actorId);
-        const en = battle.enemies.find(e => e.id === enemyRef.actorId);
-        toast(`${me?.name} → ${en?.name} 교전`);
-      }
+      const me = battle.players.find(p => p.id === playerRef.actorId);
+      const en = battle.enemies.find(e => e.id === enemyRef.actorId);
+      toast(routed
+        ? `${me?.name} ↔ ${en?.name} 교전 + 카드 라우팅`
+        : `${me?.name} → ${en?.name} 교전`);
     }
     linkMode = null;
     renderBattle();
