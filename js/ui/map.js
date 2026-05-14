@@ -1,5 +1,7 @@
 import { $, $$, el, showScreen, toast, openModal, closeModal, haptic } from './common.js';
-import { state, advanceToNextAct } from '../state.js';
+import { state, advanceToNextAct, recruitCompanion } from '../state.js';
+import { CHARACTERS } from '../data/characters.js';
+import { getPortraitSVG } from '../data/portraits.js';
 import { saveAll } from '../storage.js';
 import { renderBattle } from './battle.js';
 import { startBattle } from '../battle.js';
@@ -191,7 +193,12 @@ function doEvent(node) {
   } else if (r < 0.9) {
     const all = Object.values(CARDS).filter(c => c.rarity !== '유물');
     const card = all[Math.floor(rng() * all.length)];
-    if (card) { run.deck.push(card.id); msg = `발견 — 카드 "${card.name}" 추가`; }
+    if (card) {
+      const target = run.party.find(p => p.id === run.selectedActorId) || run.party[0];
+      target.deck = target.deck || [];
+      target.deck.push(card.id);
+      msg = `발견 — ${target.name}이 "${card.name}" 습득`;
+    }
   } else {
     const cost = 6 + Math.floor(rng() * 6);
     for (const p of run.party) p.hp = Math.max(1, p.hp - cost);
@@ -210,20 +217,36 @@ function onRestQuick() {
   renderMap();
 }
 
-function openDeck() {
+export function openDeck() {
   const modal = document.querySelector('[data-modal="deck"]');
   const grid = $('#deck-grid');
   grid.innerHTML = '';
-  for (const id of state.run.deck) {
-    const card = CARDS[id];
-    const div = el('div', { class: 'card-pick' });
-    div.innerHTML = `
-      <div class="card-cost">◆${card?.light ?? 0}</div>
-      <div class="card-name">${card?.name || id}</div>
-      <div class="muted">${card?.rarity || ''}</div>
-      <div class="card-desc">${card?.desc || ''}</div>
-    `;
-    grid.appendChild(div);
+  if (!state.run || !state.run.party) {
+    modal.classList.add('active');
+    return;
+  }
+  // 캐릭터별 구획으로 묶어서 표시
+  for (const p of state.run.party) {
+    const section = el('div', { class: 'deck-section' });
+    const header = el('div', { class: 'deck-section-header' });
+    header.innerHTML = `<span class="deck-section-name">${p.name}</span><span class="deck-section-count">${(p.deck || []).length}장</span>`;
+    section.appendChild(header);
+    const list = el('div', { class: 'deck-section-cards' });
+    for (const id of (p.deck || [])) {
+      const card = CARDS[id];
+      const div = el('div', { class: 'card-pick' + (card?.consumable ? ' consumable' : '') });
+      const actionsHtml = (card?.actions || []).map(a => `<div class="card-action" data-type="${a.type}"><span>${a.type}</span><span class="card-roll">${a.min}-${a.max}</span></div>`).join('');
+      div.innerHTML = `
+        <div class="card-cost">◆${card?.light ?? 0}</div>
+        <div class="card-name">${card?.name || id}</div>
+        <div class="card-actions">${actionsHtml}</div>
+        <div class="muted">${card?.rarity || ''}${card?.consumable ? ' · 소모' : ''}</div>
+        <div class="card-desc">${card?.desc || ''}</div>
+      `;
+      list.appendChild(div);
+    }
+    section.appendChild(list);
+    grid.appendChild(section);
   }
   modal.classList.add('active');
 }
@@ -231,7 +254,7 @@ function openDeck() {
 // ─────────────────────────────────────────
 // 보상 화면 (전투 승리 후 호출)
 // ─────────────────────────────────────────
-export function openReward({ gold, cards, relic, isBoss }) {
+export function openReward({ gold, cards, relic, isBoss, recruitCandidates }) {
   const run = state.run;
   if (gold) run.gold = (run.gold || 0) + gold;
 
@@ -263,8 +286,10 @@ export function openReward({ gold, cards, relic, isBoss }) {
         <div class="card-desc">${c.desc || ''}</div>
       `;
       div.addEventListener('click', () => {
-        state.run.deck.push(cid);
-        toast(`"${c.name}" 책장에 추가`);
+        const target = state.run.party.find(p => p.id === state.run.selectedActorId) || state.run.party[0];
+        target.deck = target.deck || [];
+        target.deck.push(cid);
+        toast(`"${c.name}" → ${target.name} 책장`);
         grid.querySelectorAll('.card-pick').forEach(x => x.classList.add('disabled'));
         div.classList.add('chosen');
       });
@@ -291,6 +316,36 @@ export function openReward({ gold, cards, relic, isBoss }) {
         applyRelicOnAcquire(run, relic);
       }
     }
+  }
+
+  // 동료 합류 (보스 클리어 시)
+  if (recruitCandidates && recruitCandidates.length) {
+    body.appendChild(el('div', { class: 'reward-section-title', text: '동료 합류 — 한 명을 선택하세요 (건너뛰기 가능)' }));
+    const recruitGrid = el('div', { class: 'reward-card-grid' });
+    recruitCandidates.forEach(cid => {
+      const def = CHARACTERS[cid]; if (!def) return;
+      const card = el('div', { class: 'recruit-card' });
+      const port = el('div', { class: 'recruit-portrait' });
+      const svg = getPortraitSVG(cid);
+      if (svg) port.innerHTML = svg; else port.textContent = def.portrait || '?';
+      card.appendChild(port);
+      const meta = el('div', { class: 'recruit-meta' });
+      meta.innerHTML = `
+        <div class="recruit-name">${def.name}</div>
+        <div class="recruit-blurb">${def.blurb || ''}</div>
+        <div class="recruit-stats"><span>HP <b>${def.maxHp}</b></span> <span>SP <b>${def.maxSp}</b></span> <span>슬롯 <b>${def.actionSlots}</b></span></div>
+      `;
+      card.appendChild(meta);
+      card.addEventListener('click', () => {
+        if (recruitCompanion(cid)) {
+          toast(`${def.name} 합류!`);
+          recruitGrid.querySelectorAll('.recruit-card').forEach(x => x.classList.add('disabled'));
+          card.classList.add('chosen');
+        }
+      });
+      recruitGrid.appendChild(card);
+    });
+    body.appendChild(recruitGrid);
   }
 
   const finishBtn = el('button', { class: 'btn-primary wide', text: isBoss ? '다음 막으로' : '계속' });
@@ -422,9 +477,11 @@ function renderShop(stock) {
 function buyCard(it, divEl) {
   const run = state.run;
   if ((run.gold || 0) < it.price) { toast('골드 부족'); return; }
+  const target = run.party.find(p => p.id === run.selectedActorId) || run.party[0];
   run.gold -= it.price;
-  run.deck.push(it.id);
-  toast(`"${CARDS[it.id].name}" 구매`);
+  target.deck = target.deck || [];
+  target.deck.push(it.id);
+  toast(`${target.name} 책장에 "${CARDS[it.id].name}" 추가`);
   divEl.classList.add('disabled');
   $('.shop-gold').textContent = `보유 골드: ${run.gold}`;
 }
@@ -451,14 +508,13 @@ function buyService(s, divEl) {
 }
 
 function promptCardRemoval() {
-  // 책장에서 한 장 선택해 제거 — 간단히 첫 번째를 제거 (UI 단순화)
-  // 추후 카드 선택 UI 추가 가능.
-  if (!state.run.deck.length) { toast('책장이 비어있습니다'); return; }
-  // 가장 흔한 카드 제거 (일반 등급 우선)
-  const idx = state.run.deck.findIndex(id => (CARDS[id]?.rarity === '일반'));
+  // 선택된 캐릭터(없으면 첫 번째)의 덱에서 일반 등급 카드 우선 제거.
+  const target = state.run.party.find(p => p.id === state.run.selectedActorId) || state.run.party[0];
+  if (!target?.deck?.length) { toast(`${target?.name || '캐릭터'} 책장이 비어있습니다`); return; }
+  const idx = target.deck.findIndex(id => (CARDS[id]?.rarity === '일반'));
   const finalIdx = idx >= 0 ? idx : 0;
-  const removed = state.run.deck.splice(finalIdx, 1)[0];
-  toast(`"${CARDS[removed]?.name || removed}" 제거`);
+  const removed = target.deck.splice(finalIdx, 1)[0];
+  toast(`${target.name} 책장에서 "${CARDS[removed]?.name || removed}" 제거`);
 }
 
 function closeShop() {

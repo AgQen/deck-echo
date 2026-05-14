@@ -40,6 +40,15 @@ export function startBattle({ enemyIds, mapNodeId, encounter } = {}) {
   });
   const enemies = enemyIds.map(id => instantiateEnemy(id));
 
+  // 캐릭터별 drawPile/discardPile (자기 덱에서 셔플)
+  const drawPile = {};
+  const discardPile = {};
+  for (const p of players) {
+    const runP = run.party.find(x => x.id === p.id);
+    drawPile[p.id] = rng.shuffle((runP?.deck || []).slice());
+    discardPile[p.id] = [];
+  }
+
   // 막 + 행 심도 기반 적 스케일링
   //   막 배수: act1=1.0, act2=1.15, act3=1.30
   //   같은 막 내 심도: 첫 행 1.0 → 보스 직전 1.4 (보스는 1.5 고정)
@@ -63,8 +72,6 @@ export function startBattle({ enemyIds, mapNodeId, encounter } = {}) {
     }
   }
 
-  const drawPile = rng.shuffle(run.deck.slice());
-
   const battle = {
     rng,
     rngState: rng.seed(),
@@ -72,8 +79,8 @@ export function startBattle({ enemyIds, mapNodeId, encounter } = {}) {
     log: [],
     players, enemies,
     hand: Object.fromEntries(players.map(p => [p.id, []])),
-    drawPile,
-    discardPile: [],
+    drawPile,            // {[playerId]: cardIds[]}
+    discardPile,         // {[playerId]: cardIds[]}
     exhausted: [],
     mapNodeId,
     phase: 'plan',
@@ -92,13 +99,15 @@ export function startBattle({ enemyIds, mapNodeId, encounter } = {}) {
 
 export function drawCards(battle, playerId, n) {
   const hand = battle.hand[playerId] = battle.hand[playerId] || [];
+  battle.drawPile[playerId]   = battle.drawPile[playerId]   || [];
+  battle.discardPile[playerId] = battle.discardPile[playerId] || [];
   while (n-- > 0 && hand.length < 7) {
-    if (battle.drawPile.length === 0) {
-      if (battle.discardPile.length === 0) break;
-      battle.drawPile = battle.rng.shuffle(battle.discardPile);
-      battle.discardPile = [];
+    if (battle.drawPile[playerId].length === 0) {
+      if (battle.discardPile[playerId].length === 0) break;
+      battle.drawPile[playerId] = battle.rng.shuffle(battle.discardPile[playerId]);
+      battle.discardPile[playerId] = [];
     }
-    hand.push(battle.drawPile.pop());
+    hand.push(battle.drawPile[playerId].pop());
   }
 }
 
@@ -191,6 +200,10 @@ export function placeCard(battle, playerId, slotIdx, cardId) {
       else player.statuses[s.id] = s.value;
     }
   }
+  // 자기 SP 비용 (자기 발화 같은 카드)
+  if (card.selfSpCost) {
+    player.sp = Math.max(0, player.sp - card.selfSpCost);
+  }
   return { ok: true };
 }
 
@@ -250,8 +263,7 @@ export function clearEnemySlotRoute(battle, enemyId, slotIdx) {
 }
 
 // 슬롯 ↔ 슬롯 짝짓기 — 가장 세밀한 합. 양측 slot 모두 linkedTo 세팅.
-//   playerSlot.linkedTo = {actorId: enemyId, slotIdx}
-//   enemySlot.targetPlayerId = playerId (호환)
+// 속도 룰: 내 슬롯 속도가 적 슬롯 속도보다 빨라야 함 (동률 불가).
 export function linkSlotToSlot(battle, playerRef, enemyRef) {
   const player = battle.players.find(p => p.id === playerRef.actorId);
   const enemy  = battle.enemies.find(e => e.id === enemyRef.actorId);
@@ -259,6 +271,17 @@ export function linkSlotToSlot(battle, playerRef, enemyRef) {
   const pSlot = player.slots[playerRef.slotIdx];
   const eSlot = enemy.slots[enemyRef.slotIdx];
   if (!pSlot || !eSlot) return { ok: false, reason: 'no_slot' };
+  if (pSlot.speed <= eSlot.speed) {
+    // 더 빠른 내 슬롯이 있는지 안내
+    let fasterIdx = -1;
+    for (let i = 0; i < player.slots.length; i++) {
+      const s = player.slots[i];
+      if (s.card && !s.linkedTo && s.speed > eSlot.speed && i !== playerRef.slotIdx) {
+        if (fasterIdx < 0 || s.speed > player.slots[fasterIdx].speed) fasterIdx = i;
+      }
+    }
+    return { ok: false, reason: 'too_slow', suggestion: fasterIdx >= 0 ? fasterIdx : null };
+  }
   pSlot.linkedTo = { actorId: enemy.id, slotIdx: enemyRef.slotIdx };
   eSlot.targetPlayerId = player.id;
   return { ok: true };
@@ -494,8 +517,18 @@ function endTurn(battle) {
     for (const slot of p.slots) {
       if (slot.card && slot.card.id) {
         const def = CARDS[slot.card.id];
-        if (def?.consumable) battle.exhausted.push(slot.card.id);
-        else battle.discardPile.push(slot.card.id);
+        if (def?.consumable) {
+          battle.exhausted.push(slot.card.id);
+          // 소모 카드는 캐릭터의 영구 덱에서도 제거
+          const runP = state.run?.party.find(x => x.id === p.id);
+          if (runP?.deck) {
+            const idx = runP.deck.indexOf(slot.card.id);
+            if (idx >= 0) runP.deck.splice(idx, 1);
+          }
+        } else {
+          battle.discardPile[p.id] = battle.discardPile[p.id] || [];
+          battle.discardPile[p.id].push(slot.card.id);
+        }
       }
     }
   }

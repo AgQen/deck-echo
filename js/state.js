@@ -15,25 +15,22 @@ export const state = {
   },
 };
 
-// 새 런 시작.
-// partyIds 로 여러 캐릭터를 받을 수 있음 (기본: 조사관 + 서생).
-export function startNewRun({ partyIds = ['protagonist', 'scholar'], seed = Date.now() } = {}) {
+// 새 런 시작. 단일 캐릭터로 시작 — 동료는 보스 처치 시 합류.
+// 각 캐릭터는 자기 덱(p.deck)을 따로 갖는다.
+export function startNewRun({ partyIds = ['protagonist'], seed = Date.now() } = {}) {
   const rng = makeRng(seed);
-  const party = partyIds.map(id => instantiateCharacter(id));
-  // 덱은 각 캐릭터의 startingDeck 합집합. 캐릭터 정의에 deck이 없으면 STARTER_DECK fallback.
-  const deck = [];
-  for (const p of party) {
-    const def = CHARACTERS[p.id];
-    if (def?.startingDeck?.length) deck.push(...def.startingDeck);
-    else deck.push(...STARTER_DECK);
-  }
+  const party = partyIds.map(id => {
+    const actor = instantiateCharacter(id);
+    const def = CHARACTERS[id];
+    actor.deck = (def?.startingDeck?.length ? def.startingDeck : STARTER_DECK).slice();
+    return actor;
+  });
   state.run = {
     seed,
     rngState: rng.seed(),
     day: 1,
     act: 1,
     party,
-    deck,
     relics: [],
     gold: 80,
     map: generateAct(1, rng),
@@ -41,6 +38,17 @@ export function startNewRun({ partyIds = ['protagonist', 'scholar'], seed = Date
     selectedActorId: party[0].id,
   };
   return state.run;
+}
+
+// 동료 합류 — 보스 클리어 시 호출. 이미 파티에 있으면 무시.
+export function recruitCompanion(characterId) {
+  if (!state.run) return false;
+  if (state.run.party.find(p => p.id === characterId)) return false;
+  const actor = instantiateCharacter(characterId);
+  const def = CHARACTERS[characterId];
+  actor.deck = (def?.startingDeck?.length ? def.startingDeck : STARTER_DECK).slice();
+  state.run.party.push(actor);
+  return true;
 }
 
 // 다음 막 진입 (보스 처치 후)

@@ -38,6 +38,36 @@ export const PORTRAITS = {
     <circle cx="22" cy="20" r="1" fill="currentColor"/>
   `, '#b0d0a0'),
 
+  // 사냥꾼: 표적 + 단검
+  hunter: wrap(`
+    <circle cx="36" cy="20" r="9" fill="rgba(216,169,87,0.10)"/>
+    <circle cx="36" cy="20" r="5"/>
+    <circle cx="36" cy="20" r="2" fill="currentColor"/>
+    <path d="M10 44 L24 30 L26 32 L12 46 Z" fill="rgba(216,169,87,0.20)"/>
+    <path d="M22 34 L34 22"/>
+    <path d="M14 50 L18 46"/>
+  `, '#e0b878'),
+
+  // 광인: 광기의 나선 + 깨진 사람
+  madman: wrap(`
+    <circle cx="28" cy="20" r="10" fill="rgba(200,80,200,0.10)"/>
+    <path d="M28 12 Q22 20 28 28 Q34 36 28 44" />
+    <path d="M22 50 L22 38 L18 32 M34 50 L34 38 L38 32"/>
+    <circle cx="24" cy="18" r="0.8" fill="currentColor"/>
+    <circle cx="32" cy="22" r="0.8" fill="currentColor"/>
+    <path d="M16 8 L24 14 M40 8 L32 14"/>
+  `, '#e0a0e0'),
+
+  // 수도자: 후광 + 가부좌
+  monk: wrap(`
+    <circle cx="28" cy="14" r="8" fill="rgba(180,200,200,0.10)"/>
+    <circle cx="28" cy="14" r="6"/>
+    <path d="M28 8 L28 4 M22 10 L18 8 M34 10 L38 8 M22 18 L18 20 M34 18 L38 20" stroke-width="1.2"/>
+    <path d="M16 50 Q16 38 28 38 Q40 38 40 50 Z" fill="rgba(180,200,200,0.10)"/>
+    <path d="M22 44 Q28 40 34 44"/>
+    <circle cx="28" cy="14" r="1" fill="currentColor"/>
+  `, '#b0c8c8'),
+
   // ─── 적 ───
   // 잔재: 부서지는 사람
   husk: wrap(`
@@ -137,6 +167,69 @@ export const PORTRAITS = {
     <path d="M36 38 Q38 48 32 54" stroke-width="1.8"/>
     <path d="M42 36 Q46 44 40 52" stroke-width="1.8"/>
   `, '#80c8f0'),
+
+  // ── 신규 적
+  // 혈식자: 송곳니 + 핏방울
+  bleedfeeder: wrap(`
+    <ellipse cx="28" cy="26" rx="12" ry="9" fill="rgba(224,80,80,0.15)"/>
+    <path d="M22 30 L20 38 M28 32 L28 42 M34 30 L36 38" stroke-width="1.8"/>
+    <circle cx="20" cy="42" r="1.4" fill="currentColor"/>
+    <circle cx="28" cy="46" r="1.6" fill="currentColor"/>
+    <circle cx="36" cy="42" r="1.4" fill="currentColor"/>
+    <circle cx="22" cy="22" r="1" fill="currentColor"/>
+    <circle cx="34" cy="22" r="1" fill="currentColor"/>
+  `, '#e08080'),
+
+  // 시들음: 시든 가지 + 떨어지는 잎
+  wilter: wrap(`
+    <path d="M28 6 L28 32" stroke-width="1.8"/>
+    <path d="M28 14 Q18 16 14 22" />
+    <path d="M28 22 Q40 22 44 28" />
+    <path d="M28 30 Q20 34 16 42" />
+    <ellipse cx="14" cy="20" rx="2" ry="3" fill="rgba(168,140,80,0.4)"/>
+    <ellipse cx="44" cy="30" rx="2" ry="3" fill="rgba(168,140,80,0.4)"/>
+    <path d="M16 50 Q20 46 24 50 Q28 46 32 50 Q36 46 40 50"/>
+  `, '#a8a050'),
+
+  // 신음하는 형상: 입 벌린 윤곽
+  moaningShape: wrap(`
+    <path d="M28 8 C20 8 14 14 14 24 L14 50 L42 50 L42 24 C42 14 36 8 28 8 Z" fill="rgba(160,160,180,0.10)"/>
+    <ellipse cx="24" cy="22" rx="2" ry="3" fill="currentColor"/>
+    <ellipse cx="32" cy="22" rx="2" ry="3" fill="currentColor"/>
+    <ellipse cx="28" cy="34" rx="5" ry="8" fill="rgba(0,0,0,0.5)"/>
+    <path d="M26 32 L30 32 M25 34 L31 34 M26 36 L30 36"/>
+  `, '#c0c0d0'),
+
+  // 추격자: 그림자 인영 + 표적
+  stalker: wrap(`
+    <path d="M28 6 C22 6 18 10 18 16 L18 22 C18 26 22 28 28 28 C34 28 38 26 38 22 L38 16 C38 10 34 6 28 6 Z" fill="rgba(120,120,140,0.15)"/>
+    <path d="M14 50 L20 32 L36 32 L42 50"/>
+    <circle cx="42" cy="14" r="6" fill="rgba(216,169,87,0.10)"/>
+    <circle cx="42" cy="14" r="3"/>
+    <circle cx="42" cy="14" r="1" fill="currentColor"/>
+    <circle cx="25" cy="16" r="0.8" fill="currentColor"/>
+    <circle cx="31" cy="16" r="0.8" fill="currentColor"/>
+  `, '#c0a868'),
+
+  // 잠을 짜는 자: 거미줄 + 베틀
+  sleepWeaver: wrap(`
+    <path d="M28 4 L28 52 M4 28 L52 28 M10 10 L46 46 M46 10 L10 46" stroke-width="0.8" opacity="0.5"/>
+    <ellipse cx="28" cy="28" rx="9" ry="7" fill="rgba(200,180,240,0.18)"/>
+    <circle cx="24" cy="26" r="1.2" fill="currentColor"/>
+    <circle cx="32" cy="26" r="1.2" fill="currentColor"/>
+    <circle cx="28" cy="32" r="0.8" fill="currentColor"/>
+    <path d="M22 24 L18 18 M34 24 L38 18 M22 32 L18 38 M34 32 L38 38"/>
+  `, '#c8b0f0'),
+
+  // 공허 합창: 세 윤곽
+  hollowChorus: wrap(`
+    <ellipse cx="14" cy="28" rx="6" ry="14" fill="rgba(160,140,200,0.10)"/>
+    <ellipse cx="28" cy="26" rx="7" ry="16" fill="rgba(160,140,200,0.12)"/>
+    <ellipse cx="42" cy="28" rx="6" ry="14" fill="rgba(160,140,200,0.10)"/>
+    <ellipse cx="14" cy="24" rx="2" ry="3" fill="rgba(0,0,0,0.5)"/>
+    <ellipse cx="28" cy="22" rx="2" ry="3" fill="rgba(0,0,0,0.5)"/>
+    <ellipse cx="42" cy="24" rx="2" ry="3" fill="rgba(0,0,0,0.5)"/>
+  `, '#b09cd0'),
 };
 
 export function getPortraitSVG(actorId) {

@@ -2,6 +2,7 @@ import { $, showScreen, openModal, toast } from './common.js';
 import { startNewRun, state } from '../state.js';
 import { hasSave, loadRun, clearRun } from '../storage.js';
 import { renderMap } from './map.js';
+import { openCharacterSelect } from './charSelect.js';
 
 export function bindTitle() {
   document.querySelectorAll('[data-screen="title"] [data-action]').forEach(btn => {
@@ -19,10 +20,7 @@ function onTitleAction(act) {
         if (!confirm('진행 중인 기록이 있습니다. 새로 시작하면 사라집니다.')) return;
         clearRun();
       }
-      startNewRun({});
-      showScreen('map');
-      // 화면 전환 직후 layout이 잡히도록 다음 프레임에 렌더
-      requestAnimationFrame(() => renderMap());
+      openCharacterSelect();
       break;
     }
     case 'continue': {

@@ -120,11 +120,90 @@ export const ENEMIES = {
     resist: { 참격: '저항', 관통: '저항', 타격: '저항', 정신: '저항', 공포: '면역' },
     pattern: [
       { type: '공격', min: 7, max: 12, property: '타격', name: '깊은 곳의 발톱' },
-      { type: '공격', min: 6, max: 10, property: '공포', name: '꿈의 자락', effects: [{ id: '떨림', value: 4 }] },
+      { type: '공격', min: 6, max: 10, property: '공포', name: '꿈의 자락', effects: [{ id: '떨림', value: 4, target: 'opponent' }] },
       { type: '공격', min: 8, max: 14, property: '관통', name: '미지의 시선' },
       { type: '막기', min: 6, max: 10, property: '공포', name: '심해의 침묵' },
       { type: '반격', min: 7, max: 10, property: '타격', name: '돌풍 같은 분노' },
       { type: '회피', min: 6, max: 11, property: '공포', name: '꿈으로 미끄러짐' },
+    ],
+    reward: { type: 'relic' },
+  },
+
+  // ─── 상태이상 키워드 기반 신규 적 ───
+  bleedfeeder: {
+    id: 'bleedfeeder', name: '혈식자', portrait: '🩸',
+    maxHp: 30, maxSp: 20, actionSlots: 2,
+    speedDice: { min: 2, max: 5 },
+    resist: { 참격: '저항', 관통: '취약', 타격: '일반', 정신: '일반', 공포: '저항' },
+    pattern: [
+      { type: '공격', min: 2, max: 5, property: '참격', name: '저미는 송곳니', effects: [{ id: '출혈', value: 2, target: 'opponent' }] },
+      { type: '공격', min: 3, max: 6, property: '참격', name: '뜯기', effects: [{ id: '출혈', value: 1, target: 'opponent' }] },
+      { type: '회피', min: 2, max: 4, property: '참격', name: '핥기' },
+    ],
+    reward: { type: 'card', rarity: '일반' },
+  },
+  wilter: {
+    id: 'wilter', name: '시들음', portrait: '🥀',
+    maxHp: 28, maxSp: 26, actionSlots: 2,
+    speedDice: { min: 2, max: 4 },
+    resist: { 참격: '일반', 관통: '일반', 타격: '저항', 정신: '저항', 공포: '저항' },
+    pattern: [
+      { type: '공격', min: 1, max: 3, property: '공포', name: '시드는 입김', effects: [{ id: '약화', value: 2, target: 'opponent' }] },
+      { type: '막기', min: 3, max: 5, property: '공포', name: '엉킨 가지' },
+      { type: '공격', min: 3, max: 5, property: '타격', name: '뻣뻣한 가지' },
+    ],
+    reward: { type: 'card', rarity: '일반' },
+  },
+  moaningShape: {
+    id: 'moaningShape', name: '신음하는 형상', portrait: '👤',
+    maxHp: 32, maxSp: 30, actionSlots: 2,
+    speedDice: { min: 3, max: 5 },
+    resist: { 참격: '일반', 관통: '일반', 타격: '일반', 정신: '저항', 공포: '면역' },
+    pattern: [
+      { type: '공격', min: 2, max: 4, property: '공포', name: '귓속 신음', effects: [{ id: '떨림', value: 3, target: 'opponent' }] },
+      { type: '공격', min: 3, max: 5, property: '공포', name: '낮은 외침' },
+      { type: '회피', min: 3, max: 6, property: '공포', name: '흩어짐' },
+    ],
+    reward: { type: 'card', rarity: '희귀' },
+  },
+  stalker: {
+    id: 'stalker', name: '추격자', portrait: '🜉',
+    maxHp: 34, maxSp: 22, actionSlots: 3,
+    speedDice: { min: 5, max: 8 },
+    resist: { 참격: '일반', 관통: '저항', 타격: '취약', 정신: '일반', 공포: '일반' },
+    pattern: [
+      { type: '공격', min: 2, max: 5, property: '관통', name: '표적 새김', effects: [{ id: '관통상', value: 2, target: 'opponent' }] },
+      { type: '공격', min: 4, max: 6, property: '관통', name: '추격 일격' },
+      { type: '회피', min: 4, max: 7, property: '관통', name: '그림자 걸음' },
+      { type: '반격', min: 3, max: 5, property: '관통', name: '반사' },
+    ],
+    reward: { type: 'card', rarity: '희귀' },
+  },
+
+  // ─── 새 미니보스 (정예 슬롯에서 등장) ───
+  sleepWeaver: {
+    id: 'sleepWeaver', name: '잠을 짜는 자', portrait: '🜗',
+    maxHp: 70, maxSp: 50, actionSlots: 3,
+    speedDice: { min: 3, max: 7 },
+    resist: { 참격: '저항', 관통: '일반', 타격: '저항', 정신: '저항', 공포: '면역' },
+    pattern: [
+      { type: '공격', min: 3, max: 6, property: '공포', name: '꿈의 실', effects: [{ id: '떨림', value: 2, target: 'opponent' }, { id: '약화', value: 1, target: 'opponent' }] },
+      { type: '공격', min: 4, max: 7, property: '참격', name: '엮어 자른다', effects: [{ id: '출혈', value: 1, target: 'opponent' }] },
+      { type: '막기', min: 4, max: 6, property: '공포', name: '망각의 천' },
+      { type: '회피', min: 4, max: 7, property: '공포', name: '꿈 사이' },
+    ],
+    reward: { type: 'relic' },
+  },
+  hollowChorus: {
+    id: 'hollowChorus', name: '공허 합창', portrait: '🜍',
+    maxHp: 56, maxSp: 64, actionSlots: 3,
+    speedDice: { min: 2, max: 6 },
+    resist: { 참격: '저항', 관통: '저항', 타격: '일반', 정신: '취약', 공포: '저항' },
+    pattern: [
+      { type: '공격', min: 2, max: 4, property: '공포', name: '첫 음', effects: [{ id: '떨림', value: 1, target: 'opponent' }] },
+      { type: '공격', min: 3, max: 5, property: '공포', name: '둘째 음', effects: [{ id: '떨림', value: 2, target: 'opponent' }] },
+      { type: '공격', min: 4, max: 7, property: '공포', name: '마지막 음', effects: [{ id: '떨림', value: 3, target: 'opponent' }, { id: '약화', value: 2, target: 'opponent' }] },
+      { type: '막기', min: 3, max: 6, property: '공포', name: '울림 차단' },
     ],
     reward: { type: 'relic' },
   },

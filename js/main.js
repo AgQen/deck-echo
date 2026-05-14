@@ -5,6 +5,7 @@ import { bindTitle } from './ui/title.js';
 import { bindMap } from './ui/map.js';
 import { bindBattle } from './ui/battle.js';
 import { bindModals } from './ui/modals.js';
+import { bindCharacterSelect } from './ui/charSelect.js';
 import { CARDS } from './data/cards.js';
 
 // 전역 노출 (디버그용)
@@ -56,6 +57,7 @@ function init() {
   if (wideInput) wideInput.addEventListener('change', applySettingsToDOM);
 
   bindTitle();
+  bindCharacterSelect();
   bindMap();
   bindBattle();
   bindModals();

@@ -244,6 +244,92 @@ export const CARDS = {
     ],
     tags: ['근접', '참격'],
   },
+
+  // ── 사냥꾼 시그니처
+  trackingArrow: {
+    id: 'trackingArrow', name: '추적 화살', rarity: '일반', light: 1,
+    desc: '관통 공격 + 관통상 1 부여.',
+    actions: [
+      { type: '공격', min: 3, max: 6, property: '관통', effects: [{ id: '관통상', value: 1, target: 'opponent' }] },
+    ],
+    tags: ['원거리', '관통', '관통상'],
+  },
+  huntersResolve: {
+    id: 'huntersResolve', name: '사냥꾼의 의지', rarity: '희귀', light: 1,
+    desc: '관통상 적에게 큰 한 방. 두 번 노린다.',
+    actions: [
+      { type: '공격', min: 4, max: 7, property: '관통' },
+      { type: '공격', min: 4, max: 7, property: '관통' },
+    ],
+    tags: ['원거리', '관통'],
+  },
+
+  // ── 광인 시그니처
+  laughterOfRuin: {
+    id: 'laughterOfRuin', name: '폐허의 웃음', rarity: '희귀', light: 1,
+    desc: '광역 정신 공격 — 떨림과 약화를 동시에.',
+    actions: [
+      { type: '공격', min: 2, max: 5, property: '공포',
+        effects: [{ id: '떨림', value: 2, target: 'opponent' }, { id: '약화', value: 1, target: 'opponent' }] },
+    ],
+    tags: ['원거리', '정신', '떨림', '약화'],
+  },
+  selfImmolation: {
+    id: 'selfImmolation', name: '자기 발화', rarity: '유물', light: 2,
+    desc: '내 SP 5 소모, 자기 강화 4. 한 번 쓰면 사라진다.',
+    consumable: true,
+    actions: [],
+    effects: [{ type: 'light', value: 1 }],
+    selfStatus: [{ id: '강화', value: 4 }],
+    selfSpCost: 5,
+    tags: ['유틸', '강화', '소모'],
+  },
+
+  // ── 수도자 시그니처
+  innerLight: {
+    id: 'innerLight', name: '내면의 빛', rarity: '일반', light: 0,
+    desc: '배치 즉시 자기 보호막 4.',
+    actions: [],
+    effects: [],
+    selfStatus: [{ id: '보호막', value: 4 }],
+    tags: ['유틸', '방어', '보호막'],
+  },
+  vow: {
+    id: 'vow', name: '서원', rarity: '희귀', light: 1,
+    desc: '강한 막기 + 합 이기면 본인 강화 2.',
+    actions: [
+      { type: '막기', min: 5, max: 8, property: '정신',
+        effects: [{ id: '강화', value: 2, target: 'self' }] },
+    ],
+    tags: ['방어', '정신', '강화'],
+  },
+  serenity: {
+    id: 'serenity', name: '평정', rarity: '희귀', light: 0,
+    desc: '빛 +2, 보호막 2.',
+    actions: [],
+    effects: [{ type: 'light', value: 2 }],
+    selfStatus: [{ id: '보호막', value: 2 }],
+    tags: ['유틸', '빛', '보호막'],
+  },
+
+  // ── 공용 / 적도 사용 가능한 콘셉트 카드
+  silentBlade: {
+    id: 'silentBlade', name: '고요한 칼날', rarity: '희귀', light: 1,
+    desc: '회피 + 일격. 회피 잔존.',
+    actions: [
+      { type: '회피', min: 3, max: 6, property: '참격' },
+      { type: '공격', min: 4, max: 7, property: '참격' },
+    ],
+    tags: ['근접', '참격', '회피'],
+  },
+  feedingFear: {
+    id: 'feedingFear', name: '두려움의 양분', rarity: '희귀', light: 2,
+    desc: '떨림이 있는 적에게 큰 정신력 공격.',
+    actions: [
+      { type: '공격', min: 5, max: 8, property: '공포' },
+    ],
+    tags: ['원거리', '정신'],
+  },
 };
 
 export function cardCost(card) {

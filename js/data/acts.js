@@ -14,7 +14,7 @@ export const ACTS = {
     rows: 7,
     minPerRow: 2, maxPerRow: 3,
     typeWeights: { battle: 55, event: 16, shop: 9, rest: 12, elite: 8 },
-    enemyPool: { normal: ['husk', 'husk', 'cultist'], elite: ['watcher'] },
+    enemyPool: { normal: ['husk', 'husk', 'cultist', 'bleedfeeder', 'wilter'], elite: ['watcher', 'sleepWeaver'] },
     boss: 'bossWeaver',
   },
   2: {
@@ -22,7 +22,7 @@ export const ACTS = {
     rows: 8,
     minPerRow: 2, maxPerRow: 4,
     typeWeights: { battle: 48, event: 14, shop: 12, rest: 11, elite: 15 },
-    enemyPool: { normal: ['cultist', 'watcher', 'thrall'], elite: ['watcher', 'thrall'] },
+    enemyPool: { normal: ['cultist', 'watcher', 'thrall', 'moaningShape', 'stalker'], elite: ['watcher', 'thrall', 'sleepWeaver', 'hollowChorus'] },
     boss: 'bossTheRitualist',
   },
   3: {
@@ -30,7 +30,7 @@ export const ACTS = {
     rows: 9,
     minPerRow: 3, maxPerRow: 4,
     typeWeights: { battle: 42, event: 10, shop: 11, rest: 12, elite: 25 },
-    enemyPool: { normal: ['thrall', 'spawn', 'cultist'], elite: ['spawn', 'shoggothLet'] },
+    enemyPool: { normal: ['thrall', 'spawn', 'cultist', 'moaningShape', 'stalker'], elite: ['spawn', 'shoggothLet', 'sleepWeaver', 'hollowChorus'] },
     boss: 'bossSleeperOfTheDeep',
   },
 };

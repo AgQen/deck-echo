@@ -13,7 +13,7 @@ import { saveAll } from '../storage.js';
 import { CARDS, cardCost } from '../data/cards.js';
 import { PROPERTIES } from '../data/properties.js';
 import { placeCard, removeCard, engageActor, disengageActor, routeEnemySlot, clearEnemySlotRoute, linkSlotToSlot, unlinkPlayerSlot, executeTurn } from '../battle.js';
-import { renderMap, openReward } from './map.js';
+import { renderMap, openReward, openDeck } from './map.js';
 import { xpToNext, LEVEL_CAP, LEVEL_THRESHOLDS } from '../data/progression.js';
 import { RELICS } from '../data/relics.js';
 import { STATUSES as STATUS_DEFS } from '../data/statuses.js';
@@ -36,6 +36,7 @@ function onBattleAction(act) {
   switch (act) {
     case 'execute': onExecute(); break;
     case 'open-items': toast('아이템 — 추후 구현'); break;
+    case 'open-deck': openDeck(); break;
     case 'open-settings':
     case 'battle-settings': openModal('settings'); break;
     case 'battle-log': showBattleLog(); break;
@@ -384,8 +385,18 @@ function onCardClick(ref) {
         toast('슬롯 합 해제');
       } else {
         const res = linkSlotToSlot(battle, playerRef, enemyRef);
-        if (!res.ok) toast('연결 불가');
-        else toast(`${player.name} 슬롯 ↔ ${enemy.name} 슬롯`);
+        if (!res.ok) {
+          if (res.reason === 'too_slow') {
+            if (res.suggestion != null) {
+              const fastSlot = player.slots[res.suggestion];
+              toast(`속도 부족 (내 ${pSlot.speed} ≤ 적 ${eSlot.speed}). 속도 ${fastSlot.speed} 슬롯을 쓰세요`);
+            } else {
+              toast(`속도 부족 (내 ${pSlot.speed} ≤ 적 ${eSlot.speed})`);
+            }
+          } else toast('연결 불가');
+        } else {
+          toast(`${player.name} 슬롯 ↔ ${enemy.name} 슬롯`);
+        }
       }
     } else if (enemyRef.slotIdx != null) {
       // 적 슬롯만 (플레이어 측은 아바타)
@@ -926,10 +937,23 @@ function endBattle(battle) {
       const pool = rest.filter(r => isBoss ? true : r.rarity !== '유물');
       if (pool.length) relic = pool[Math.floor(battle.rng() * pool.length)].id;
     }
+    // 보스 처치 시 동료 후보 2명 (파티 미합류 캐릭터 중)
+    let recruitCandidates = null;
+    if (isBoss) {
+      const pool = ['protagonist', 'scholar', 'scout', 'hunter', 'madman', 'monk']
+        .filter(id => !run.party.find(p => p.id === id));
+      const picked = [];
+      const tmp = pool.slice();
+      while (picked.length < 2 && tmp.length) {
+        const i = Math.floor(battle.rng() * tmp.length);
+        picked.push(tmp.splice(i, 1)[0]);
+      }
+      if (picked.length) recruitCandidates = picked;
+    }
     setTimeout(() => {
       showScreen('map');
       renderMap();
-      openReward({ gold, cards, relic, isBoss });
+      openReward({ gold, cards, relic, isBoss, recruitCandidates });
     }, 600);
   } else {
     toast('패배… 진행이 종료됩니다', 2400);

@@ -2,7 +2,7 @@ import { state } from './state.js';
 
 const KEY = 'deckEcho.save';
 const SETTINGS_KEY = 'deckEcho.settings';
-const SCHEMA_VERSION = 2;   // 슬롯 구조 변경 시 ++
+const SCHEMA_VERSION = 3;   // 슬롯 구조 변경 시 ++
 
 export function saveAll() {
   try {

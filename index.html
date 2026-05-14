@@ -33,6 +33,19 @@
       </div>
     </section>
 
+    <!-- 캐릭터 선택 -->
+    <section class="screen" data-screen="character-select">
+      <header class="top-bar">
+        <button class="icon-btn" data-action="cs-back">‹</button>
+        <div class="top-title">시작 캐릭터 선택</div>
+        <div style="width:38px"></div>
+      </header>
+      <div class="cs-body" id="cs-body"></div>
+      <div class="cs-foot">
+        <button class="btn-primary wide" data-action="cs-start" disabled>이 캐릭터로 시작</button>
+      </div>
+    </section>
+
     <!-- 맵 (어컴호러 스타일 노드 맵) -->
     <section class="screen" data-screen="map">
       <header class="top-bar">
@@ -83,7 +96,8 @@
         <div class="battle-bottom-bar">
           <button class="icon-btn" data-action="open-items">🎒</button>
           <button class="btn-primary big" data-action="execute">▶ 시작</button>
-          <button class="icon-btn" data-action="battle-log">📜</button>
+          <button class="icon-btn" data-action="open-deck" title="책장">📚</button>
+          <button class="icon-btn" data-action="battle-log" title="기록">📜</button>
         </div>
       </div>
     </section>
