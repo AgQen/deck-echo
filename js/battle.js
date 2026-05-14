@@ -172,25 +172,27 @@ export function removeCard(battle, playerId, slotIdx) {
   }
 }
 
-// 슬롯 단위 합 연결. src/dst = {side, actorId, slotIdx}
-export function linkSlot(battle, src, dst) {
-  if (src.side === dst.side) return { ok: false, reason: 'same_side' };
+// 캐릭터 교전 — 내 캐릭터를 상대 적 캐릭터와 짝지움.
+// 그 캐릭터의 모든 공격 액션이 해당 적을 향함.
+export function engageActor(battle, src, dst) {
+  if (src.side !== 'player') return { ok: false, reason: 'src_not_player' };
+  if (dst.side !== 'enemy')  return { ok: false, reason: 'dst_not_enemy' };
   const srcActor = getActor(battle, src.side, src.actorId);
   const dstActor = getActor(battle, dst.side, dst.actorId);
   if (!srcActor || !dstActor) return { ok: false, reason: 'no_actor' };
-  const srcSlot = srcActor.slots[src.slotIdx];
-  const dstSlot = dstActor.slots[dst.slotIdx];
-  if (!srcSlot || !dstSlot || !srcSlot.card || !dstSlot.card) return { ok: false, reason: 'no_slot' };
-  if (srcSlot.speed <= dstSlot.speed) return { ok: false, reason: 'too_slow' };
-  srcSlot.linkedTo = { side: dst.side, actorId: dst.actorId, slotIdx: dst.slotIdx };
+  if (dstActor.dead) return { ok: false, reason: 'dead' };
+  srcActor.targetActorId = dstActor.id;
   return { ok: true };
 }
 
-export function unlinkSlot(battle, src) {
+export function disengageActor(battle, src) {
   const actor = getActor(battle, src.side, src.actorId);
-  const slot = actor?.slots?.[src.slotIdx];
-  if (slot) slot.linkedTo = null;
+  if (actor) actor.targetActorId = null;
 }
+
+// 구버전 슬롯 단위 합 API (호환용. UI는 더이상 호출하지 않음)
+export function linkSlot() { return { ok: false, reason: 'deprecated' }; }
+export function unlinkSlot() {}
 
 function getActor(battle, side, id) {
   return (side === 'player' ? battle.players : battle.enemies).find(a => a.id === id);
@@ -199,6 +201,9 @@ function getActor(battle, side, id) {
 // ─────────────────────────────────────────────
 // 턴 해소 (async + hooks)
 // ─────────────────────────────────────────────
+//   - 캐릭터에 targetActorId가 설정돼 있으면 그 적이 우선 타겟
+//   - 그 외에는 가장 왼쪽 살아있는 적이 기본 타겟
+//   - 미연결 방어 액션은 대기 풀에 들어가 들어오는 공격에 반응
 export async function executeTurn(battle, hooks = {}) {
   battle.phase = 'resolve';
   const log = battle.log;
@@ -207,25 +212,14 @@ export async function executeTurn(battle, hooks = {}) {
   const startDead = battle.enemies.filter(e => e.dead).length;
   const startDisordered = battle.enemies.filter(e => e.disordered).length;
 
-  // 어느 슬롯이 누군가의 명시적 합 대상인지 — 그 슬롯의 액션은 풀에서 제외 (이중 사용 방지)
-  const targetedSlotKeys = new Set();
-  for (const actor of [...battle.players, ...battle.enemies]) {
-    if (actor.dead || actor.disordered) continue;
-    for (const s of actor.slots) {
-      if (s.linkedTo) targetedSlotKeys.add(`${s.linkedTo.actorId}:${s.linkedTo.slotIdx}`);
-    }
-  }
-
-  // 1) 방어 대기 풀 구축
-  //    actorId -> [{slotIdx, actionIdx, action}]
+  // 1) 방어 대기 풀
   const defensePools = new Map();
   for (const actor of [...battle.players, ...battle.enemies]) {
     defensePools.set(actor.id, []);
     if (actor.dead || actor.disordered) continue;
     for (let si = 0; si < actor.slots.length; si++) {
       const slot = actor.slots[si];
-      if (!slot.card || slot.linkedTo) continue;
-      if (targetedSlotKeys.has(`${actor.id}:${si}`)) continue;  // 누가 합 걸어둔 슬롯은 제외
+      if (!slot.card) continue;
       for (let ai = 0; ai < slot.card.actions.length; ai++) {
         const a = slot.card.actions[ai];
         if (a.type === '공격') continue;
@@ -234,41 +228,26 @@ export async function executeTurn(battle, hooks = {}) {
     }
   }
 
-  // 2) 이벤트 큐 구성 (속도 내림차순)
-  //    - 연결된 슬롯은 'linked-clash' 이벤트 하나
-  //    - 미연결 슬롯의 공격 액션은 각각 'attack' 이벤트
+  // 2) 공격 이벤트 큐 (속도 내림차순)
   const events = [];
   for (const actor of [...battle.players, ...battle.enemies]) {
     if (actor.dead || actor.disordered) continue;
     for (let si = 0; si < actor.slots.length; si++) {
       const slot = actor.slots[si];
       if (!slot.card) continue;
-      if (slot.linkedTo) {
-        events.push({ kind: 'linked', side: actor.side, actor, slotIdx: si, slot, speed: slot.speed });
-      } else {
-        for (let ai = 0; ai < slot.card.actions.length; ai++) {
-          const a = slot.card.actions[ai];
-          if (a.type === '공격') {
-            events.push({ kind: 'attack', side: actor.side, actor, slotIdx: si, actionIdx: ai, action: a, speed: slot.speed });
-          }
+      for (let ai = 0; ai < slot.card.actions.length; ai++) {
+        const a = slot.card.actions[ai];
+        if (a.type === '공격') {
+          events.push({ kind: 'attack', side: actor.side, actor, slotIdx: si, actionIdx: ai, action: a, speed: slot.speed });
         }
       }
     }
   }
   events.sort((x, y) => y.speed - x.speed);
 
-  // 소비 추적 (연결된 슬롯 / 풀 외부의 액션용)
-  const consumed = new Set();
-  const KK = (side, aid, si, ai) => `${side}:${aid}:${si}:${ai}`;
-
   for (const ev of events) {
     if (ev.actor.dead) continue;
-    if (ev.kind === 'attack') {
-      if (consumed.has(KK(ev.side, ev.actor.id, ev.slotIdx, ev.actionIdx))) continue;
-      await resolveAttack(battle, ev, defensePools, consumed, hooks, log);
-    } else if (ev.kind === 'linked') {
-      await resolveLinkedClash(battle, ev, consumed, hooks, log);
-    }
+    await resolveAttack(battle, ev, defensePools, hooks, log);
   }
 
   const endDead = battle.enemies.filter(e => e.dead).length;
@@ -278,16 +257,20 @@ export async function executeTurn(battle, hooks = {}) {
   endTurn(battle);
 }
 
-// 미연결 공격 처리: 가장 왼쪽 살아있는 상대를 노리고, 그 상대의 방어 풀에서 첫 액션을 사용.
-async function resolveAttack(battle, ev, defensePools, consumed, hooks, log) {
+// 캐릭터 교전 기반 공격 처리.
+//   actor.targetActorId 가 설정돼 있으면 그 적이 우선 타겟, 없으면 가장 왼쪽 살아있는 적.
+async function resolveAttack(battle, ev, defensePools, hooks, log) {
   const { side, actor, slotIdx, actionIdx, action } = ev;
   const oppList = side === 'player' ? battle.enemies : battle.players;
-  const target = oppList.find(o => !o.dead);
+  let target = null;
+  if (actor.targetActorId) {
+    target = oppList.find(o => o.id === actor.targetActorId && !o.dead);
+  }
+  if (!target) target = oppList.find(o => !o.dead);
   if (!target) return;
 
   const pool = defensePools.get(target.id) || [];
   const aRoll = rollAction(action, battle.rng);
-  consumed.add(KK(side, actor.id, slotIdx, actionIdx));
 
   if (pool.length === 0) {
     await hooks.onUnopposed?.({
@@ -320,116 +303,8 @@ async function resolveAttack(battle, ev, defensePools, consumed, hooks, log) {
   // 방어 액션 소비 규칙:
   //   회피: 졌을 때만 소비 (이기거나 무승부면 풀에 남음)
   //   막기/반격: 항상 소비
-  const defType = def.action.type;
-  const defWon = result.winner === 'b';
-  const stays = defType === '회피' && !((result.winner === 'a'));
+  const stays = def.action.type === '회피' && result.winner !== 'a';
   if (!stays) pool.shift();
-}
-
-// 슬롯-슬롯 연결 합. 액션을 순서대로 짝지어 합.
-async function resolveLinkedClash(battle, ev, consumed, hooks, log) {
-  const { side, actor, slotIdx, slot } = ev;
-  const linked = slot.linkedTo;
-  if (!linked) return;
-  const dstActor = getActor(battle, linked.side, linked.actorId);
-  const dstSlot = dstActor?.slots[linked.slotIdx];
-  if (!dstActor || dstActor.dead || !dstSlot?.card) {
-    // 대상 사라짐 → 공격은 일방으로 발산
-    for (let ai = 0; ai < slot.card.actions.length; ai++) {
-      const action = slot.card.actions[ai];
-      if (consumed.has(KK(side, actor.id, slotIdx, ai))) continue;
-      if (action.type !== '공격' && action.type !== '반격') {
-        consumed.add(KK(side, actor.id, slotIdx, ai));
-        continue;
-      }
-      const opp = side === 'player' ? battle.enemies.find(e => !e.dead) : battle.players.find(p => !p.dead);
-      if (!opp) continue;
-      const roll = rollAction(action, battle.rng);
-      await hooks.onUnopposed?.({ source: { actor, action, slotIdx, actionIdx: ai }, target: opp, roll });
-      const before = snapshot(actor, opp);
-      applyEvents([{ kind: 'hit', from: 'a', to: 'b', amount: roll, prop: action.property }], actor, opp);
-      await hooks.onAfterHit?.({ source: actor, target: opp, before });
-      awardXpFromDeltas(battle, actor, opp, before, log);
-      consumed.add(KK(side, actor.id, slotIdx, ai));
-    }
-    return;
-  }
-
-  const myActions = slot.card.actions;
-  const dstActions = dstSlot.card.actions;
-  const n = Math.max(myActions.length, dstActions.length);
-
-  for (let ai = 0; ai < n; ai++) {
-    if (actor.dead) break;
-    const myAct = myActions[ai];
-    const dstAct = dstActions[ai];
-    const myKey = myAct ? KK(side, actor.id, slotIdx, ai) : null;
-    const dstKey = dstAct ? KK(dstActor.side, dstActor.id, linked.slotIdx, ai) : null;
-    if (myKey && consumed.has(myKey)) continue;
-
-    // 대상이 합 도중 사망 → 잔여 내 공격은 일방으로 다른 살아있는 적에게
-    if (dstActor.dead && myAct && (myAct.type === '공격' || myAct.type === '반격')) {
-      const opp = side === 'player' ? battle.enemies.find(e => !e.dead) : battle.players.find(p => !p.dead);
-      if (opp) {
-        const roll = rollAction(myAct, battle.rng);
-        await hooks.onUnopposed?.({ source: { actor, action: myAct, slotIdx, actionIdx: ai }, target: opp, roll });
-        const before = snapshot(actor, opp);
-        applyEvents([{ kind: 'hit', from: 'a', to: 'b', amount: roll, prop: myAct.property }], actor, opp);
-        await hooks.onAfterHit?.({ source: actor, target: opp, before });
-        awardXpFromDeltas(battle, actor, opp, before, log);
-      }
-      consumed.add(myKey);
-      continue;
-    }
-    if (dstKey && consumed.has(dstKey)) {
-      // 상대 액션이 이미 다른 합에서 회피로 살아남았다가 진 경우 — 그냥 내 액션만 일방으로
-    }
-
-    if (myAct && dstAct && !(dstKey && consumed.has(dstKey))) {
-      const aRoll = rollAction(myAct, battle.rng);
-      const bRoll = rollAction(dstAct, battle.rng);
-      const result = resolveClash({ a: myAct, b: dstAct, aRoll, bRoll });
-      await hooks.onClash?.({
-        source: { actor, action: myAct, slotIdx, actionIdx: ai },
-        target: { actor: dstActor, action: dstAct, slotIdx: linked.slotIdx, actionIdx: ai },
-        aRoll, bRoll, winner: result.winner,
-      });
-      log.push({ type: 'clash', src: { actor: actor.name, action: myAct.type, roll: aRoll }, dst: { actor: dstActor.name, action: dstAct.type, roll: bRoll }, winner: result.winner });
-      const before = snapshot(actor, dstActor);
-      applyEvents(result.events, actor, dstActor);
-      await hooks.onAfterHit?.({ source: actor, target: dstActor, before });
-      awardXpFromDeltas(battle, actor, dstActor, before, log);
-      // 회피 소비 룰
-      const myEvadeWin = myAct.type === '회피' && result.winner === 'a';
-      const dstEvadeWin = dstAct.type === '회피' && result.winner === 'b';
-      consumed.add(myKey);
-      consumed.add(dstKey);
-      if (myEvadeWin) consumed.delete(myKey);
-      if (dstEvadeWin) consumed.delete(dstKey);
-    } else if (myAct && !dstAct) {
-      // 내 잉여 액션 → 일방
-      if (myAct.type === '공격' || myAct.type === '반격') {
-        const roll = rollAction(myAct, battle.rng);
-        await hooks.onUnopposed?.({ source: { actor, action: myAct, slotIdx, actionIdx: ai }, target: dstActor, roll });
-        const before = snapshot(actor, dstActor);
-        applyEvents([{ kind: 'hit', from: 'a', to: 'b', amount: roll, prop: myAct.property }], actor, dstActor);
-        await hooks.onAfterHit?.({ source: actor, target: dstActor, before });
-        awardXpFromDeltas(battle, actor, dstActor, before, log);
-      }
-      consumed.add(myKey);
-    } else if (!myAct && dstAct) {
-      // 상대 잉여 액션 → 일방으로 나에게
-      if (dstAct.type === '공격' || dstAct.type === '반격') {
-        const roll = rollAction(dstAct, battle.rng);
-        await hooks.onUnopposed?.({ source: { actor: dstActor, action: dstAct, slotIdx: linked.slotIdx, actionIdx: ai }, target: actor, roll });
-        const before = snapshot(dstActor, actor);
-        applyEvents([{ kind: 'hit', from: 'a', to: 'b', amount: roll, prop: dstAct.property }], dstActor, actor);
-        await hooks.onAfterHit?.({ source: dstActor, target: actor, before });
-        awardXpFromDeltas(battle, dstActor, actor, before, log);
-      }
-      consumed.add(dstKey);
-    }
-  }
 }
 
 function snapshot(a, b) {

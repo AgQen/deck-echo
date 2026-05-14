@@ -71,6 +71,7 @@ export function instantiateCharacter(id, overrides = {}) {
     light: def.baseMaxLight ?? 5,         // 현재 빛 (전투 시작 시 가득)
     level: 0,
     xp: 0,
+    targetActorId: null,                  // 교전 중인 적 (캐릭터-캐릭터 합)
     statuses: {},
     disordered: false,
     dead: false,
