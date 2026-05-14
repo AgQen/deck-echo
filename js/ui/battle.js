@@ -89,8 +89,35 @@ function renderActorRow(sel, actors, selId, onSelect) {
     }
     if (linkMode && linkMode.actorId === a.id && linkMode.slotIdx == null) cls += ' link-source';
     const div = el('div', { class: cls });
+
+    // 속도 오브 — 합 연결용 아이콘. 양측 모두 "전장 앞쪽"(중앙)으로 향함.
+    //   적: portrait 아래 (중앙 쪽), 플레이어: portrait 위 (중앙 쪽)
+    const orbs = el('div', { class: 'speed-orbs' });
+    for (let i = 0; i < a.actionSlots; i++) {
+      const slot = a.slots[i];
+      let orbCls = 'speed-orb' + (slot?.card ? ' filled' : '');
+      if (slot?.targetPlayerId) orbCls += ' routed';
+      if (linkMode && linkMode.side === a.side && linkMode.actorId === a.id && linkMode.slotIdx === i) orbCls += ' link-source';
+      const orb = el('div', { class: orbCls, text: String(slot?.speed ?? '?') });
+      orb.setAttribute('data-actor-id', a.id);
+      orb.setAttribute('data-side', a.side);
+      orb.setAttribute('data-slot-idx', String(i));
+      orb.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        if (a.side === 'enemy' && slot?.card) {
+          onCardClick({ side: 'enemy', actorId: a.id, slotIdx: i });
+        } else {
+          onCardClick({ side: a.side, actorId: a.id, slotIdx: i });
+        }
+      });
+      orbs.appendChild(orb);
+    }
+
+    // 플레이어: 오브가 portrait 위로 (캐릭터 위에 떠 있음)
+    if (a.side === 'player') div.appendChild(orbs);
     div.appendChild(el('div', { class: 'actor-portrait', text: a.portrait || '?' }));
     div.appendChild(el('div', { class: 'actor-name', text: a.name }));
+
     // HP/SP 미니 게이지
     const mini = el('div', { class: 'actor-mini' });
     const hpBar = el('div', { class: 'mini-bar hp' });
@@ -104,27 +131,9 @@ function renderActorRow(sel, actors, selId, onSelect) {
     mini.appendChild(hpBar);
     mini.appendChild(spBar);
     div.appendChild(mini);
-    // 속도 오브 — 캐릭터 앞에 놓인 합 연결용 아이콘.
-    //   각 슬롯의 속도값을 동전처럼 표시. 클릭하면 그 캐릭터로 교전 시작.
-    const orbs = el('div', { class: 'speed-orbs' });
-    for (let i = 0; i < a.actionSlots; i++) {
-      const slot = a.slots[i];
-      let orbCls = 'speed-orb' + (slot?.card ? ' filled' : '');
-      if (slot?.targetPlayerId) orbCls += ' routed';
-      const orb = el('div', { class: orbCls, text: String(slot?.speed ?? '?') });
-      orb.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        // 적 측: 슬롯 단위 라우팅 (적 카드 → 내 사람) 기본 동작
-        // 내 측: 캐릭터 교전
-        if (a.side === 'enemy' && slot?.card) {
-          onCardClick({ side: 'enemy', actorId: a.id, slotIdx: i });
-        } else {
-          onCardClick({ side: a.side, actorId: a.id });
-        }
-      });
-      orbs.appendChild(orb);
-    }
-    div.appendChild(orbs);
+
+    // 적: 오브가 portrait 아래 (캐릭터 발치)
+    if (a.side === 'enemy') div.appendChild(orbs);
     // 상태이상 칩
     if (a.statuses && Object.keys(a.statuses).length) {
       const chips = el('div', { class: 'actor-status-row' });
@@ -421,6 +430,10 @@ function drawClashLines() {
             markerWidth="6" markerHeight="6" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#e06060" />
     </marker>
+    <marker id="arr-yellow" viewBox="0 0 10 10" refX="9" refY="5"
+            markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#f0c860" />
+    </marker>
   `;
   svg.appendChild(defs);
 
@@ -432,14 +445,24 @@ function drawClashLines() {
 
   const players = battle.players;
   const enemies = battle.enemies;
-  const playerEls = document.querySelectorAll('#player-actors .actor');
-  const enemyEls = document.querySelectorAll('#enemy-actors .actor');
 
-  function avatarEl(side, actorId) {
+  // 오브 단위로 끝점을 찾는 헬퍼. 슬롯이 정해진 경우 그 오브, 없으면 첫 오브.
+  function orbEl(side, actorId, slotIdx) {
+    if (slotIdx != null) {
+      return document.querySelector(`.speed-orb[data-side="${side}"][data-actor-id="${actorId}"][data-slot-idx="${slotIdx}"]`);
+    }
+    return document.querySelector(`.speed-orb[data-side="${side}"][data-actor-id="${actorId}"]`);
+  }
+  function actorEl(side, actorId) {
+    const sel = side === 'player' ? '#player-actors' : '#enemy-actors';
     const list = side === 'player' ? players : enemies;
     const idx = list.findIndex(a => a.id === actorId);
     if (idx < 0) return null;
-    return (side === 'player' ? playerEls : enemyEls)[idx];
+    return document.querySelectorAll(`${sel} .actor`)[idx];
+  }
+  // 끝점 우선순위: orb → actor (orb 없으면 아바타로 폴백)
+  function endpointEl(side, actorId, slotIdx) {
+    return orbEl(side, actorId, slotIdx) || actorEl(side, actorId);
   }
 
   function drawClashCurve(src, dst) {
@@ -449,6 +472,7 @@ function drawClashLines() {
     const mx = (a.x + b.x) / 2;
     path.setAttribute('d', `M ${a.x} ${a.y} Q ${mx} ${(a.y + b.y) / 2}, ${b.x} ${b.y}`);
     path.setAttribute('class', 'clash-line');
+    path.setAttribute('marker-end', 'url(#arr-yellow)');
     svg.appendChild(path);
   }
   function drawOnewayArrow(src, dst) {
@@ -461,6 +485,8 @@ function drawClashLines() {
     line.setAttribute('marker-end', 'url(#arr-red)');
     svg.appendChild(line);
   }
+  // 호환을 위해 avatarEl을 endpointEl 폴백으로 alias
+  function avatarEl(side, actorId) { return endpointEl(side, actorId); }
 
   // ── 1) 내 캐릭터 측 라인 (캐릭터 아바타 → 적 아바타)
   const firstEnemy = enemies.find(e => !e.dead);
@@ -506,14 +532,19 @@ function drawClashLines() {
         ? players.find(p => p.id === slot.targetPlayerId && !p.dead)
         : firstPlayer;
       if (!targetPlayer) continue;
-      const srcEl = document.querySelector(`#enemy-cards .card-slot:nth-child(${si + 1})`);
-      // 대상 플레이어가 화면에 표시 중이고 방어 카드 보유 시 → 그 방어 슬롯이 받아냄
-      let dstEl = avatarEl('player', targetPlayer.id);
+      // 소스: 적 카드 슬롯 위의 오브
+      const srcOrb = orbEl('enemy', selEnemy.id, si);
+      const srcEl = srcOrb || document.querySelector(`#enemy-cards .card-slot:nth-child(${si + 1})`);
+      // 도착: 기본 = 플레이어 오브 컨테이너 (첫 오브)
+      let dstEl = orbEl('player', targetPlayer.id, 0) || avatarEl('player', targetPlayer.id);
+      // 그 플레이어가 현재 선택돼 있고 방어 카드가 있으면 → 첫 방어 슬롯의 오브로
       if (targetPlayer.id === selectedActorId) {
         const defIdx = findFirstDefenseSlotIdx(targetPlayer);
         if (defIdx >= 0) {
-          const defEl = playerSlotDefenseEl(targetPlayer, defIdx);
-          if (defEl) { dstEl = defEl; defEl.classList.add('defense-incoming'); }
+          const orbForDef = orbEl('player', targetPlayer.id, defIdx);
+          const slotForDef = document.querySelector(`#player-cards .card-slot:nth-child(${defIdx + 1})`);
+          if (slotForDef) slotForDef.classList.add('defense-incoming');
+          if (orbForDef) dstEl = orbForDef;
         }
       }
       if (slot.targetPlayerId) {

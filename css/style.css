@@ -350,10 +350,14 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 .slot-dot.used { background: #2a2a32; }
 .slot-dot.active { background: #d8a957; box-shadow: 0 0 6px #d8a957; }
 
-/* 속도 오브 — 캐릭터 앞 합 연결용 아이콘 */
+/* 속도 오브 — 캐릭터 앞 합 연결용 아이콘
+   플레이어는 캐릭터 위(중앙 쪽), 적은 캐릭터 아래(중앙 쪽)에 배치 */
 .speed-orbs {
-  display: flex; gap: 4px; margin-top: 4px;
+  display: flex; gap: 4px;
+  justify-content: center;
 }
+#player-actors .speed-orbs { margin-bottom: 4px; }
+#enemy-actors .speed-orbs { margin-top: 4px; }
 .speed-orb {
   width: 22px; height: 22px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
