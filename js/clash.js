@@ -15,7 +15,7 @@
 //                  대신 미연결은 "허공의 일격"으로 처리(상대 행위자에게 회피 가능한 데미지를 시도).
 
 import { effectiveResist, PROPERTIES } from './data/properties.js';
-import { applyStatus } from './data/statuses.js';
+import { applyStatus, attackerDamageMul, defenderBonusDamage } from './data/statuses.js';
 
 export function rollAction(action, rng) {
   const { min, max } = action;
@@ -114,11 +114,14 @@ export function isConsumedAfterClash(action, wonClash) {
 export function applyEvents(events, actorA, actorB) {
   for (const ev of events) {
     if (ev.kind === 'hit') {
+      const attacker = ev.from === 'a' ? actorA : actorB;
       const target = ev.to === 'a' ? actorA : actorB;
       const prop = PROPERTIES[ev.prop];
       if (!prop) continue;
       const mult = effectiveResist(target, ev.prop);
-      const dmg = Math.round(ev.amount * mult);
+      const attackerMul = attackerDamageMul(attacker);
+      const defenderAdd = defenderBonusDamage(target);
+      const dmg = Math.max(0, Math.round((ev.amount + defenderAdd) * mult * attackerMul));
       if (prop.target === 'hp') {
         // 보호막 흡수
         const shield = target.statuses?.보호막 || 0;

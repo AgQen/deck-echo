@@ -184,6 +184,66 @@ export const CARDS = {
     ],
     tags: ['방어', '정신'],
   },
+
+  // ── 상태이상 시너지 카드
+  bleedingEdge: {
+    id: 'bleedingEdge', name: '벼른 칼날', rarity: '희귀', light: 1,
+    desc: '약한 공격 두 번. 적중 시 출혈 2 부여.',
+    actions: [
+      { type: '공격', min: 2, max: 4, property: '참격', effects: [{ id: '출혈', value: 2, target: 'opponent' }] },
+      { type: '공격', min: 2, max: 4, property: '참격', effects: [{ id: '출혈', value: 1, target: 'opponent' }] },
+    ],
+    tags: ['근접', '참격', '출혈'],
+  },
+  mindGouge: {
+    id: 'mindGouge', name: '정신 후벼파기', rarity: '희귀', light: 2,
+    desc: '강한 공포. 떨림 4 부여.',
+    actions: [
+      { type: '공격', min: 3, max: 5, property: '공포', effects: [{ id: '떨림', value: 4, target: 'opponent' }] },
+    ],
+    tags: ['원거리', '정신', '떨림'],
+  },
+  weakeningHowl: {
+    id: 'weakeningHowl', name: '약화의 외침', rarity: '일반', light: 1,
+    desc: '약한 정신력 공격. 약화 2 부여.',
+    actions: [
+      { type: '공격', min: 2, max: 4, property: '정신', effects: [{ id: '약화', value: 2, target: 'opponent' }] },
+    ],
+    tags: ['원거리', '정신', '약화'],
+  },
+  battleHymn: {
+    id: 'battleHymn', name: '전투의 찬가', rarity: '희귀', light: 1,
+    desc: '배치 즉시 자신에게 강화 2 부여 + 빛 +1.',
+    actions: [],
+    effects: [{ type: 'light', value: 1 }],
+    selfStatus: [{ id: '강화', value: 2 }],
+    tags: ['유틸', '강화'],
+  },
+  piercingMark: {
+    id: 'piercingMark', name: '관통의 표식', rarity: '희귀', light: 1,
+    desc: '관통 공격 한 번. 적에게 관통상 2 부여.',
+    actions: [
+      { type: '공격', min: 4, max: 6, property: '관통', effects: [{ id: '관통상', value: 2, target: 'opponent' }] },
+    ],
+    tags: ['근접', '관통', '관통상'],
+  },
+  echoOfTheDeep: {
+    id: 'echoOfTheDeep', name: '심해의 메아리', rarity: '유물', light: 2,
+    desc: '두 번 공격, 둘 다 떨림 부여. 정예 이상에서 본가치.',
+    actions: [
+      { type: '공격', min: 4, max: 6, property: '공포', effects: [{ id: '떨림', value: 2, target: 'opponent' }] },
+      { type: '공격', min: 4, max: 6, property: '공포', effects: [{ id: '떨림', value: 2, target: 'opponent' }] },
+    ],
+    tags: ['원거리', '정신', '떨림'],
+  },
+  reckoning: {
+    id: 'reckoning', name: '심판의 칼', rarity: '유물', light: 3,
+    desc: '강타. 출혈 / 관통상이 있는 적에게 데미지 +50% (관통상 효과로 산정됨).',
+    actions: [
+      { type: '공격', min: 8, max: 12, property: '참격' },
+    ],
+    tags: ['근접', '참격'],
+  },
 };
 
 export function cardCost(card) {

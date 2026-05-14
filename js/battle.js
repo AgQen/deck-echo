@@ -25,11 +25,11 @@ import { CARDS, cardCost } from './data/cards.js';
 import { state } from './state.js';
 import { makeRng } from './rng.js';
 import { resolveClash, rollAction, applyEvents } from './clash.js';
-import { tickStatuses, reduceDurations } from './data/statuses.js';
+import { tickStatuses, reduceDurations, STATUSES } from './data/statuses.js';
 import { awardXp, XP_RULES, LEVEL_BONUS_LIGHT } from './data/progression.js';
 import { fireRelicHook } from './data/relics.js';
 
-export function startBattle({ enemyIds, mapNodeId } = {}) {
+export function startBattle({ enemyIds, mapNodeId, encounter } = {}) {
   const run = state.run;
   if (!run) throw new Error('no run');
   const rng = makeRng(run.rngState ?? Date.now());
@@ -39,6 +39,29 @@ export function startBattle({ enemyIds, mapNodeId } = {}) {
     return { ...p, slots: [], statuses: {}, disordered: false, maxLight, light: maxLight };
   });
   const enemies = enemyIds.map(id => instantiateEnemy(id));
+
+  // 막 + 행 심도 기반 적 스케일링
+  //   막 배수: act1=1.0, act2=1.15, act3=1.30
+  //   같은 막 내 심도: 첫 행 1.0 → 보스 직전 1.4 (보스는 1.5 고정)
+  //   엘리트는 +0.15 가산
+  const actMult = 1.0 + ((run.act || 1) - 1) * 0.15;
+  const kind = encounter?.kind || 'battle';
+  const depth = encounter?.depthFactor ?? 0;
+  let depthMult = 1.0 + depth * 0.40;
+  if (kind === 'elite') depthMult += 0.15;
+  if (kind === 'boss')  depthMult = 1.5;
+  const scaling = actMult * depthMult;
+
+  for (const e of enemies) {
+    e.maxHp = Math.round(e.maxHp * scaling);
+    e.hp = e.maxHp;
+    e.maxSp = Math.round(e.maxSp * scaling);
+    e.sp = e.maxSp;
+    for (const p of e.pattern) {
+      p.min = Math.max(1, Math.round(p.min * Math.sqrt(scaling)));
+      p.max = Math.max(p.min, Math.round(p.max * Math.sqrt(scaling)));
+    }
+  }
 
   const drawPile = rng.shuffle(run.deck.slice());
 
@@ -147,6 +170,15 @@ export function placeCard(battle, playerId, slotIdx, cardId) {
     for (const eff of card.effects) {
       if (eff.type === 'draw') drawCards(battle, playerId, eff.value);
       else if (eff.type === 'light') player.light = Math.min(player.maxLight, player.light + eff.value);
+    }
+  }
+  // 자기 자신에게 상태이상 (강화 등)
+  if (card.selfStatus) {
+    for (const s of card.selfStatus) {
+      if (!player.statuses) player.statuses = {};
+      const def = STATUSES[s.id];
+      if (def?.stack) player.statuses[s.id] = (player.statuses[s.id] || 0) + s.value;
+      else player.statuses[s.id] = s.value;
     }
   }
   return { ok: true };

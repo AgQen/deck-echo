@@ -81,7 +81,7 @@ export function generateAct(actNum, rng) {
         if (row === cfg.rows - 2) { w.rest = 30; w.elite = 0; }
         type = weightedPick(rng, w);
       }
-      const encounter = makeEncounter(type, cfg, rng);
+      const encounter = makeEncounter(type, cfg, rng, row, cfg.rows);
       nodes[id] = { type, label: typeLabel(type), pos: [x, y], conn: [], encounter };
       conn[id] = [];
       rowIds.push(id);
@@ -126,20 +126,22 @@ export function generateAct(actNum, rng) {
   };
 }
 
-function makeEncounter(type, cfg, rng) {
+function makeEncounter(type, cfg, rng, row = 0, totalRows = 5) {
+  // 0.0 = 첫 행(약함), 1.0 = 보스 직전(강함)
+  const depthFactor = totalRows > 1 ? row / (totalRows - 1) : 0;
   switch (type) {
     case 'battle': {
       const pool = cfg.enemyPool.normal;
       const num = 1 + (rng() < 0.4 ? 1 : 0);
       const enemies = [];
       for (let i = 0; i < num; i++) enemies.push(pool[Math.floor(rng() * pool.length)]);
-      return { enemies };
+      return { enemies, depthFactor, kind: 'battle' };
     }
     case 'elite': {
       const pool = cfg.enemyPool.elite;
-      return { enemies: [pool[Math.floor(rng() * pool.length)]] };
+      return { enemies: [pool[Math.floor(rng() * pool.length)]], depthFactor, kind: 'elite' };
     }
-    case 'boss': return { enemies: [cfg.boss] };
+    case 'boss': return { enemies: [cfg.boss], depthFactor: 1.0, kind: 'boss' };
     case 'rest':  return { heal: 0.4 };
     case 'shop':  return { seed: Math.floor(rng() * 1e9) };
     case 'event': return { seed: Math.floor(rng() * 1e9) };

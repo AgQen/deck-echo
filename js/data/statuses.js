@@ -23,8 +23,32 @@ export const STATUSES = {
     id: '보호막', label: '보호막', bad: false, stack: true,
     desc: '받는 체력 피해를 스택만큼 흡수.',
   },
-  // ... 자유롭게 추가
+  약화: {
+    id: '약화', label: '약화', bad: true, stack: true,
+    desc: '가하는 데미지가 스택당 -10% (최대 -50%).',
+    // 데미지 가산은 resolveAttack 측 modifier 에서 처리 (data만 보관)
+  },
+  강화: {
+    id: '강화', label: '강화', bad: false, stack: true,
+    desc: '가하는 데미지가 스택당 +10% (최대 +50%).',
+  },
+  관통상: {
+    id: '관통상', label: '관통상', bad: true, stack: true,
+    desc: '받는 데미지가 스택만큼 가산.',
+  },
 };
+
+// 액션 가하는 측 데미지 보정 — 강화/약화 결합
+export function attackerDamageMul(actor) {
+  let m = 1.0;
+  if (actor?.statuses?.강화) m += Math.min(0.5, 0.10 * actor.statuses.강화);
+  if (actor?.statuses?.약화) m -= Math.min(0.5, 0.10 * actor.statuses.약화);
+  return Math.max(0.1, m);
+}
+// 받는 측 추가 가산 — 관통상
+export function defenderBonusDamage(actor) {
+  return actor?.statuses?.관통상 || 0;
+}
 
 export function tickStatuses(actor, ctx, when) {
   if (!actor.statuses) return;

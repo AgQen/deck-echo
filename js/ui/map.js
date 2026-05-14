@@ -145,7 +145,7 @@ function enterNode() {
     case 'battle':
     case 'elite':
     case 'boss':
-      startBattle({ enemyIds: node.encounter.enemies, mapNodeId: pendingNode });
+      startBattle({ enemyIds: node.encounter.enemies, mapNodeId: pendingNode, encounter: node.encounter });
       showScreen('battle');
       renderBattle();
       break;
