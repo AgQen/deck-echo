@@ -203,6 +203,12 @@ export function placeCard(battle, playerId, slotIdx, cardId) {
   // 자기 SP 비용 (자기 발화 같은 카드)
   if (card.selfSpCost) {
     player.sp = Math.max(0, player.sp - card.selfSpCost);
+    // SP 0이면 흐트러짐 적용 (다른 SP 데미지 경로와 동일하게)
+    if (player.sp <= 0 && !player.disordered) {
+      player.statuses = player.statuses || {};
+      player.statuses['흐트러짐'] = 2;
+      player.disordered = true;
+    }
   }
   return { ok: true };
 }

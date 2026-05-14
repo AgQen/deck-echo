@@ -66,6 +66,19 @@ function init() {
   document.addEventListener('gesturestart', (e) => e.preventDefault());
   document.addEventListener('dblclick', (e) => e.preventDefault());
 
+  // ESC 키로 모달 닫기 (보상/상점 등 명시적 종료가 필요한 모달은 닫지 않도록 제외)
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const closable = ['settings', 'help', 'deck', 'card-pick', 'card-zoom', 'setup'];
+    for (const name of closable) {
+      const m = document.querySelector(`[data-modal="${name}"].active`);
+      if (m) {
+        import('./ui/common.js').then(({ closeModal }) => closeModal());
+        break;
+      }
+    }
+  });
+
   // 이어하기 버튼 활성/비활성 표시
   const cont = document.querySelector('[data-action="continue"]');
   if (cont && !hasSave()) cont.style.opacity = 0.5;
