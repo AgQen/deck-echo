@@ -17,6 +17,7 @@ import { renderMap, openReward } from './map.js';
 import { xpToNext, LEVEL_CAP, LEVEL_THRESHOLDS } from '../data/progression.js';
 import { RELICS } from '../data/relics.js';
 import { STATUSES as STATUS_DEFS } from '../data/statuses.js';
+import { getPortraitSVG } from '../data/portraits.js';
 
 let selectedActorId = null;
 let selectedEnemyId = null;
@@ -116,7 +117,18 @@ function renderActorRow(sel, actors, selId, onSelect) {
 
     // 플레이어: 오브가 portrait 위로 (캐릭터 위에 떠 있음)
     if (a.side === 'player') div.appendChild(orbs);
-    div.appendChild(el('div', { class: 'actor-portrait', text: a.portrait || '?' }));
+
+    // 포트레이트: SVG 실루엣이 있으면 사용, 없으면 이모지 폴백
+    const portrait = el('div', { class: 'actor-portrait' });
+    const svg = getPortraitSVG(a.id);
+    if (svg) {
+      portrait.innerHTML = svg;
+      portrait.classList.add('has-svg');
+    } else {
+      portrait.textContent = a.portrait || '?';
+    }
+    div.appendChild(portrait);
+
     div.appendChild(el('div', { class: 'actor-name', text: a.name }));
 
     // HP/SP 미니 게이지

@@ -352,7 +352,10 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
   font-size: 28px;
   border: 1px solid rgba(216,169,87,0.3);
   box-shadow: inset 0 0 12px rgba(0,0,0,0.6), 0 0 6px rgba(216,169,87,0.1);
+  overflow: hidden;
 }
+.actor-portrait.has-svg { padding: 4px; }
+.actor-portrait svg { width: 100%; height: 100%; }
 .actor.selected .actor-portrait {
   border-color: var(--gold-warm);
   box-shadow: inset 0 0 12px rgba(0,0,0,0.6), 0 0 14px rgba(240,200,96,0.4);
