@@ -278,15 +278,18 @@ export function openReward({ gold, cards, relic, isBoss }) {
   finishBtn.addEventListener('click', () => {
     closeModal();
     if (isBoss) {
-      // 다음 막 진입
       if (run.act >= 3) {
-        toast('전 막 클리어! 깊은 잠으로의 끝을 보았다.', 4000);
+        // 게임 클리어 — 진행 저장 삭제
+        toast('전 막 클리어! 깊은 잠은 잠시 가라앉았다.', 5000);
+        try { localStorage.removeItem('deckEcho.save'); } catch {}
+        state.run = null;
         showScreen('title');
         return;
       }
       advanceToNextAct();
       saveAll();
       renderMap();
+      setTimeout(() => toast(`${run.act}막 — ${run.map?.name || ''}`, 2200), 200);
     } else {
       saveAll();
       renderMap();
