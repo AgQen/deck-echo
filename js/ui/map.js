@@ -6,6 +6,7 @@ import { startBattle } from '../battle.js';
 import { CARDS, cardsByRarity } from '../data/cards.js';
 import { RELICS, relicsByRarity, applyRelicOnAcquire } from '../data/relics.js';
 import { makeRng } from '../rng.js';
+import { generateAct } from '../data/acts.js';
 
 const TYPE_ICON = {
   battle: '⚔', elite: '☠', event: '❓', shop: '☉', rest: '🜉', boss: '👁',
@@ -23,7 +24,11 @@ export function bindMap() {
 
 export function renderMap() {
   const run = state.run;
-  if (!run || !run.map) return;
+  if (!run) { console.warn('renderMap: no run'); return; }
+  if (!run.map) {
+    console.warn('renderMap: no map — regenerating');
+    run.map = generateAct(run.act || 1, makeRng(run.seed || Date.now()));
+  }
   const canvas = $('#map-canvas');
   if (!canvas) return;
   if (canvas.clientWidth === 0) { requestAnimationFrame(renderMap); return; }
@@ -32,12 +37,11 @@ export function renderMap() {
   const current = run.map.current;
   const reachable = new Set(run.map.nodes[current]?.conn || []);
 
-  // SVG 연결선 (백분율 viewBox)
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('viewBox', '0 0 100 100');
   svg.setAttribute('preserveAspectRatio', 'none');
   svg.setAttribute('class', 'map-edges');
-  svg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;';
+  svg.style.cssText = 'position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:1;';
   canvas.appendChild(svg);
 
   for (const [id, n] of Object.entries(run.map.nodes)) {
@@ -50,13 +54,14 @@ export function renderMap() {
       line.setAttribute('x2', tgt.pos[0] * 100);
       line.setAttribute('y2', tgt.pos[1] * 100);
       const isPath = (id === current && reachable.has(to)) || (to === current && reachable.has(id));
-      line.setAttribute('stroke', isPath ? '#d8a957' : '#3a3a48');
+      line.setAttribute('stroke', isPath ? '#f0c860' : '#6a6478');
       line.setAttribute('vector-effect', 'non-scaling-stroke');
       line.style.strokeWidth = isPath ? '3' : '2';
       svg.appendChild(line);
     }
   }
 
+  let count = 0;
   for (const [id, n] of Object.entries(run.map.nodes)) {
     const wrap = el('div', { class: 'map-node-wrap' });
     wrap.style.left = (n.pos[0] * 100) + '%';
@@ -72,10 +77,13 @@ export function renderMap() {
     wrap.appendChild(node);
     wrap.appendChild(el('div', { class: 'map-node-label', text: n.label || n.type }));
     canvas.appendChild(wrap);
+    count++;
+  }
+  if (count === 0) {
+    canvas.appendChild(el('div', { class: 'muted', style: 'position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);', text: '맵 노드가 비어 있습니다' }));
   }
 
-  // 상단 상태 바
-  $('[data-stat="day"]').textContent = `${run.act}막 · ${run.map.name}`;
+  $('[data-stat="day"]').textContent = `${run.act || 1}막 · ${run.map.name}`;
   const doomEl = document.querySelector('[data-stat="doom"]');
   if (doomEl) doomEl.textContent = `골드 ${run.gold || 0}`;
   const moveEl = document.querySelector('[data-stat="move"]');

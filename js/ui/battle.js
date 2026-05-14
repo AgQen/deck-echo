@@ -154,14 +154,19 @@ function renderCardRail(sel, actor, side) {
     const slot = actor.slots[i];
     const wrap = el('div', { class: 'card-slot' + (slot.card ? ' filled' : ' empty') });
     if (slot.card) {
-      // 카드 있을 때는 카드 자체에서 속도 표시
       wrap.appendChild(renderCardEl(slot.card, side, actor.id, i, slot.speed));
     } else {
-      // 빈 슬롯: 큰 + 와 슬롯 속도 라벨
       wrap.appendChild(el('div', { class: 'slot-plus', text: '+' }));
       wrap.appendChild(el('div', { class: 'slot-speed-empty', text: `속도 ${slot.speed ?? '?'}` }));
       if (side === 'player') {
-        wrap.addEventListener('click', () => openCardPicker(actor.id, i));
+        wrap.addEventListener('click', () => {
+          if (linkMode) {  // 링크 중이면 취소만
+            linkMode = null;
+            renderBattle();
+            return;
+          }
+          openCardPicker(actor.id, i);
+        });
       }
     }
     rail.appendChild(wrap);
