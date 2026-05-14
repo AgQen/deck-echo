@@ -366,6 +366,21 @@ async function resolveLinkedClash(battle, ev, consumed, hooks, log) {
     const myKey = myAct ? KK(side, actor.id, slotIdx, ai) : null;
     const dstKey = dstAct ? KK(dstActor.side, dstActor.id, linked.slotIdx, ai) : null;
     if (myKey && consumed.has(myKey)) continue;
+
+    // 대상이 합 도중 사망 → 잔여 내 공격은 일방으로 다른 살아있는 적에게
+    if (dstActor.dead && myAct && (myAct.type === '공격' || myAct.type === '반격')) {
+      const opp = side === 'player' ? battle.enemies.find(e => !e.dead) : battle.players.find(p => !p.dead);
+      if (opp) {
+        const roll = rollAction(myAct, battle.rng);
+        await hooks.onUnopposed?.({ source: { actor, action: myAct, slotIdx, actionIdx: ai }, target: opp, roll });
+        const before = snapshot(actor, opp);
+        applyEvents([{ kind: 'hit', from: 'a', to: 'b', amount: roll, prop: myAct.property }], actor, opp);
+        await hooks.onAfterHit?.({ source: actor, target: opp, before });
+        awardXpFromDeltas(battle, actor, opp, before, log);
+      }
+      consumed.add(myKey);
+      continue;
+    }
     if (dstKey && consumed.has(dstKey)) {
       // 상대 액션이 이미 다른 합에서 회피로 살아남았다가 진 경우 — 그냥 내 액션만 일방으로
     }
