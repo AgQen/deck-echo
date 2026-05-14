@@ -145,6 +145,7 @@ export function instantiateEnemy(id) {
     statuses: {},
     disordered: false,
     dead: false,
+    targetActorId: null,
     slots: [],
   };
 }

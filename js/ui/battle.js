@@ -52,13 +52,14 @@ export function renderBattle() {
     selectedEnemyId = battle.enemies[0]?.id;
   }
 
+  // 어느 액터 아바타든 탭하면 선택 + 교전 제스처 둘 다 동작.
   renderActorRow('#enemy-actors', battle.enemies, selectedEnemyId, id => {
-    if (linkMode) { onCardClick({ side: 'enemy', actorId: id }); return; }
-    selectedEnemyId = id; renderBattle();
+    selectedEnemyId = id;
+    onCardClick({ side: 'enemy', actorId: id });
   });
   renderActorRow('#player-actors', battle.players, selectedActorId, id => {
-    if (selectedActorId === id) { onCardClick({ side: 'player', actorId: id }); return; }
-    selectedActorId = id; renderBattle();
+    selectedActorId = id;
+    onCardClick({ side: 'player', actorId: id });
   });
 
   renderSelectedInfo('#enemy-info', battle.enemies.find(e => e.id === selectedEnemyId));
@@ -267,61 +268,79 @@ function renderCardEl(card, side, actorId, slotIdx, slotSpeed) {
   return c;
 }
 
-// 카드 클릭 또는 액터 아바타 클릭 → 캐릭터 교전 짝짓기 제스처.
-//   1) 내 캐릭터(카드/아바타) 첫 탭 → 교전 모드 진입
-//   2) 적 캐릭터(카드/아바타) 탭 → 그 캐릭터를 교전 대상으로 설정
-//   3) 이미 교전 중인 내 캐릭터 다시 탭 → 교전 해제
+// 양방향 교전 짝짓기. 내 쪽이든 적 쪽이든 어느 쪽을 먼저 탭하든 동작.
+//   - 한 쪽 탭 → 그 쪽이 교전 시작점 (linkMode)
+//   - 다른 쪽 탭 → 짝짓기 완성 (engageActor)
+//   - 이미 교전 중인 캐릭터/적 다시 탭 → 해제
+//   - 같은 쪽 다른 액터 탭 → 시작점 변경
 function onCardClick(ref) {
   const battle = state.run?.inBattle;
   if (!battle) return;
-  if (ref.side === 'player') {
-    const actor = battle.players.find(p => p.id === ref.actorId);
-    if (!actor) return;
 
-    // 1) 이미 교전 중이면 → 해제
-    if (actor.targetActorId) {
-      disengageActor(battle, { side: 'player', actorId: actor.id });
-      linkMode = null;
-      toast(`${actor.name} 교전 해제`);
-      renderBattle();
-      return;
-    }
-    // 2) 현재 교전 모드가 이 캐릭터면 → 모드 취소
-    if (linkMode && linkMode.actorId === ref.actorId) {
-      linkMode = null;
-      renderBattle();
-      return;
-    }
-    // 3) 그 외 → 이 캐릭터를 교전 시작점으로
-    linkMode = { side: 'player', actorId: ref.actorId };
-    haptic(8);
-    toast(`${actor.name} — 교전할 적을 누르세요 (다시 누르면 취소)`);
-    renderBattle();
-  } else {
-    // 적쪽 클릭 → 교전 대상 지정
-    if (!linkMode) {
-      toast('먼저 내 캐릭터를 누르세요');
-      return;
-    }
-    const res = engageActor(battle, linkMode, { side: 'enemy', actorId: ref.actorId });
+  // A) linkMode 있고 반대편 탭 → 짝짓기
+  if (linkMode && linkMode.side !== ref.side) {
+    const playerRef = linkMode.side === 'player' ? linkMode : ref;
+    const enemyRef  = linkMode.side === 'enemy'  ? linkMode : ref;
+    const res = engageActor(battle, playerRef, enemyRef);
     if (!res.ok) {
       if (res.reason === 'dead') toast('이미 죽은 상대');
       else toast('교전 불가');
+      linkMode = null;
+      renderBattle();
       return;
     }
-    const me = battle.players.find(p => p.id === linkMode.actorId);
-    const enemy = battle.enemies.find(e => e.id === ref.actorId);
-    toast(`${me?.name} → ${enemy?.name} 교전`);
+    const me = battle.players.find(p => p.id === playerRef.actorId);
+    const en = battle.enemies.find(e => e.id === enemyRef.actorId);
+    toast(`${me?.name} ↔ ${en?.name} 교전`);
     linkMode = null;
     renderBattle();
+    return;
   }
+
+  // B) 이미 교전 중인 액터/적 탭 → 해제
+  if (ref.side === 'player') {
+    const me = battle.players.find(p => p.id === ref.actorId);
+    if (me?.targetActorId) {
+      disengageActor(battle, { side: 'player', actorId: ref.actorId });
+      linkMode = null;
+      toast(`${me.name} 교전 해제`);
+      renderBattle();
+      return;
+    }
+  } else {
+    const engaged = battle.players.find(p => p.targetActorId === ref.actorId);
+    if (engaged) {
+      disengageActor(battle, { side: 'player', actorId: engaged.id });
+      linkMode = null;
+      toast(`${engaged.name} 교전 해제`);
+      renderBattle();
+      return;
+    }
+  }
+
+  // C) 같은 액터 다시 탭 → 모드 취소
+  if (linkMode && linkMode.side === ref.side && linkMode.actorId === ref.actorId) {
+    linkMode = null;
+    renderBattle();
+    return;
+  }
+
+  // D) 새 모드 진입 (또는 같은 쪽 다른 액터로 전환)
+  linkMode = { side: ref.side, actorId: ref.actorId };
+  haptic(8);
+  const ent = ref.side === 'player'
+    ? '맞붙일 적을 누르세요'
+    : '맞붙일 내 사람을 누르세요';
+  toast(ent);
+  renderBattle();
 }
 
 
-// 계획 단계 라인 그리기 (캐릭터-캐릭터 단위).
-//   - 교전 중인 캐릭터(targetActorId 설정) → 적 아바타까지 노란 곡선
-//   - 교전 없는 캐릭터의 공격은 → 가장 왼쪽 살아있는 적까지 빨간 점선 화살표
-//   - 적의 공격도 동일하게 첫 살아있는 플레이어로 빨간 화살표
+// 계획 단계 라인 그리기.
+//   - 내 캐릭터 측: 캐릭터 아바타 → 교전 적 아바타 (노란 곡선)
+//     교전 없으면 가장 왼쪽 살아있는 적으로 빨간 화살표
+//   - 적 측: 각 적 카드 슬롯 → 타겟 플레이어 아바타 (적 카드 → 내 사람)
+//     교전 있는 적은 노란 곡선, 없으면 첫 살아있는 플레이어로 빨간 화살표
 function drawClashLines() {
   const svg = $('#clash-svg');
   if (!svg) return;
@@ -379,31 +398,54 @@ function drawClashLines() {
     svg.appendChild(line);
   }
 
-  // ── 1) 노란 합 곡선: 교전 중인 내 캐릭터 ↔ 적
-  for (const p of players) {
-    if (p.dead || !p.targetActorId) continue;
-    const target = enemies.find(e => e.id === p.targetActorId && !e.dead);
-    if (!target) continue;
-    drawClashCurve(avatarEl('player', p.id), avatarEl('enemy', target.id));
-  }
-
-  // ── 2) 빨간 단방향 화살표: 교전 없는 공격 → 첫 살아있는 상대
+  // ── 1) 내 캐릭터 측 라인 (캐릭터 아바타 → 적 아바타)
   const firstEnemy = enemies.find(e => !e.dead);
   const firstPlayer = players.find(p => !p.dead);
 
-  // 내 캐릭터 (교전 없음 + 공격 카드 보유)
   for (const p of players) {
-    if (p.dead || p.targetActorId) continue;
+    if (p.dead) continue;
     const hasAttack = p.slots.some(s => s.card && s.card.actions.some(a => a.type === '공격'));
-    if (!hasAttack || !firstEnemy) continue;
-    drawOnewayArrow(avatarEl('player', p.id), avatarEl('enemy', firstEnemy.id));
+    if (!hasAttack) continue;
+    if (p.targetActorId) {
+      const target = enemies.find(e => e.id === p.targetActorId && !e.dead);
+      if (target) drawClashCurve(avatarEl('player', p.id), avatarEl('enemy', target.id));
+    } else if (firstEnemy) {
+      drawOnewayArrow(avatarEl('player', p.id), avatarEl('enemy', firstEnemy.id));
+    }
   }
-  // 적 (공격 카드 보유 → 첫 살아있는 플레이어)
+
+  // ── 2) 적 측 라인 — "적 카드 → 내 사람" 단위
+  //     현재 선택된 적의 카드 슬롯에서 → 그 적의 타겟 플레이어 아바타로
+  const selEnemy = enemies.find(e => e.id === selectedEnemyId);
+  if (selEnemy && !selEnemy.dead) {
+    // 적의 타겟 플레이어: 교전 중이면 그 플레이어, 아니면 첫 살아있는 플레이어
+    const targetPlayer = selEnemy.targetActorId
+      ? players.find(p => p.id === selEnemy.targetActorId && !p.dead)
+      : firstPlayer;
+    if (targetPlayer) {
+      const dstAv = avatarEl('player', targetPlayer.id);
+      for (let si = 0; si < selEnemy.slots.length; si++) {
+        const slot = selEnemy.slots[si];
+        if (!slot.card) continue;
+        const hasAttack = slot.card.actions.some(a => a.type === '공격');
+        if (!hasAttack) continue;
+        const srcEl = document.querySelector(`#enemy-cards .card-slot:nth-child(${si + 1})`);
+        if (selEnemy.targetActorId) drawClashCurve(srcEl, dstAv);
+        else drawOnewayArrow(srcEl, dstAv);
+      }
+    }
+  }
+  // 선택되지 않은 다른 적은 아바타 단위 라인만
   for (const e of enemies) {
-    if (e.dead) continue;
+    if (e.dead || e.id === selectedEnemyId) continue;
     const hasAttack = e.slots.some(s => s.card && s.card.actions.some(a => a.type === '공격'));
-    if (!hasAttack || !firstPlayer) continue;
-    drawOnewayArrow(avatarEl('enemy', e.id), avatarEl('player', firstPlayer.id));
+    if (!hasAttack) continue;
+    const targetPlayer = e.targetActorId
+      ? players.find(p => p.id === e.targetActorId && !p.dead)
+      : firstPlayer;
+    if (!targetPlayer) continue;
+    if (e.targetActorId) drawClashCurve(avatarEl('enemy', e.id), avatarEl('player', targetPlayer.id));
+    else drawOnewayArrow(avatarEl('enemy', e.id), avatarEl('player', targetPlayer.id));
   }
 }
 

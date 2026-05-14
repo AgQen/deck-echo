@@ -172,8 +172,9 @@ export function removeCard(battle, playerId, slotIdx) {
   }
 }
 
-// 캐릭터 교전 — 내 캐릭터를 상대 적 캐릭터와 짝지움.
-// 그 캐릭터의 모든 공격 액션이 해당 적을 향함.
+// 캐릭터 교전 — 양방향(상호) 짝짓기.
+// 내 캐릭터.targetActorId = 적.id, 적.targetActorId = 내 캐릭터.id 동시에 세팅.
+// 이전 교전이 있던 쪽은 풀린다 (1:1 교전).
 export function engageActor(battle, src, dst) {
   if (src.side !== 'player') return { ok: false, reason: 'src_not_player' };
   if (dst.side !== 'enemy')  return { ok: false, reason: 'dst_not_enemy' };
@@ -181,13 +182,30 @@ export function engageActor(battle, src, dst) {
   const dstActor = getActor(battle, dst.side, dst.actorId);
   if (!srcActor || !dstActor) return { ok: false, reason: 'no_actor' };
   if (dstActor.dead) return { ok: false, reason: 'dead' };
+  // 기존 교전 끊기
+  if (srcActor.targetActorId) {
+    const prevEnemy = battle.enemies.find(e => e.id === srcActor.targetActorId);
+    if (prevEnemy) prevEnemy.targetActorId = null;
+  }
+  if (dstActor.targetActorId) {
+    const prevPlayer = battle.players.find(p => p.id === dstActor.targetActorId);
+    if (prevPlayer) prevPlayer.targetActorId = null;
+  }
   srcActor.targetActorId = dstActor.id;
+  dstActor.targetActorId = srcActor.id;
   return { ok: true };
 }
 
 export function disengageActor(battle, src) {
   const actor = getActor(battle, src.side, src.actorId);
-  if (actor) actor.targetActorId = null;
+  if (!actor) return;
+  if (actor.targetActorId) {
+    const other = src.side === 'player'
+      ? battle.enemies.find(e => e.id === actor.targetActorId)
+      : battle.players.find(p => p.id === actor.targetActorId);
+    if (other && other.targetActorId === actor.id) other.targetActorId = null;
+  }
+  actor.targetActorId = null;
 }
 
 // 구버전 슬롯 단위 합 API (호환용. UI는 더이상 호출하지 않음)
