@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="40%" r="65%">
+      <stop offset="0%" stop-color="#1a1418"/>
+      <stop offset="70%" stop-color="#0a0a0c"/>
+      <stop offset="100%" stop-color="#000"/>
+    </radialGradient>
+    <radialGradient id="eye" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f0c860"/>
+      <stop offset="40%" stop-color="#d8a957"/>
+      <stop offset="100%" stop-color="#3a2410"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+  <g transform="translate(256 256)" fill="none" stroke="#d8a957" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M -160 0 Q -100 -100, 0 -100 Q 100 -100, 160 0 Q 100 100, 0 100 Q -100 100, -160 0 Z" opacity="0.85"/>
+    <circle cx="0" cy="0" r="58" fill="url(#eye)" stroke="#f0c860" stroke-width="4"/>
+    <circle cx="0" cy="0" r="22" fill="#0a0a0c" stroke="#0a0a0c"/>
+    <circle cx="-8" cy="-8" r="6" fill="#f0e0a0" stroke="none"/>
+    <path d="M -180 -20 L -210 -40 M 180 -20 L 210 -40 M -180 20 L -210 40 M 180 20 L 210 40" opacity="0.5"/>
+  </g>
+  <text x="256" y="430" text-anchor="middle" font-family="Georgia, serif" font-size="48" fill="#d8a957" letter-spacing="8">DECK·ECHO</text>
+</svg>

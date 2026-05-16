@@ -83,6 +83,11 @@ function init() {
   const cont = document.querySelector('[data-action="continue"]');
   if (cont && !hasSave()) cont.style.opacity = 0.5;
 
+  // PWA 설치 가능 — 서비스 워커 등록 (캐싱 없는 최소 SW)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => { /* 실패해도 무시 */ });
+  }
+
   // 부팅 완료 플래그 (인라인 부팅 캐처가 이걸 보고 30초 알람을 끔)
   window.__BOOTED__ = true;
 }

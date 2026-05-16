@@ -289,6 +289,20 @@ export function linkSlotToSlot(battle, playerRef, enemyRef) {
     }
     return { ok: false, reason: 'too_slow', suggestion: fasterIdx >= 0 ? fasterIdx : null };
   }
+  // 재링크 시 이전 적 슬롯의 targetPlayerId 정리 (잔존 노란선 방지)
+  if (pSlot.linkedTo) {
+    const prevEnemy = battle.enemies.find(e => e.id === pSlot.linkedTo.actorId);
+    const prevESlot = prevEnemy?.slots[pSlot.linkedTo.slotIdx];
+    if (prevESlot && prevESlot.targetPlayerId === player.id) prevESlot.targetPlayerId = null;
+  }
+  // 새 적 슬롯이 다른 플레이어 슬롯의 링크 대상이었다면 그 링크도 정리
+  for (const pp of battle.players) {
+    for (const ss of pp.slots) {
+      if (ss.linkedTo && ss.linkedTo.actorId === enemy.id && ss.linkedTo.slotIdx === enemyRef.slotIdx) {
+        ss.linkedTo = null;
+      }
+    }
+  }
   pSlot.linkedTo = { actorId: enemy.id, slotIdx: enemyRef.slotIdx };
   eSlot.targetPlayerId = player.id;
   return { ok: true };
