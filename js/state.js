@@ -3,6 +3,7 @@ import { makeRng } from './rng.js';
 import { CHARACTERS, instantiateCharacter } from './data/characters.js';
 import { STARTER_DECK } from './data/cards.js';
 import { generateAct } from './data/acts.js';
+import { fireRelicHook } from './data/relics.js';
 
 export const state = {
   screen: 'title',         // 'title' | 'map' | 'battle'
@@ -54,7 +55,9 @@ export function recruitCompanion(characterId) {
 // 다음 막 진입 (보스 처치 후)
 export function advanceToNextAct() {
   if (!state.run) return;
-  state.run.act = (state.run.act || 1) + 1;
+  const completedAct = state.run.act || 1;
+  fireRelicHook(state.run, 'onActDone', state.run, completedAct);
+  state.run.act = completedAct + 1;
   state.run.day += 1;
   // 레벨/XP 초기화 (보상은 별도 부여)
   for (const p of state.run.party) {

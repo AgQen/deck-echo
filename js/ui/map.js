@@ -2,6 +2,7 @@ import { $, $$, el, showScreen, toast, openModal, closeModal, haptic } from './c
 import { state, advanceToNextAct, recruitCompanion } from '../state.js';
 import { CHARACTERS } from '../data/characters.js';
 import { getPortraitSVG } from '../data/portraits.js';
+import { applyPortrait } from '../assets.js';
 import { saveAll } from '../storage.js';
 import { renderBattle } from './battle.js';
 import { startBattle } from '../battle.js';
@@ -9,6 +10,7 @@ import { CARDS, cardsByRarity } from '../data/cards.js';
 import { RELICS, relicsByRarity, applyRelicOnAcquire } from '../data/relics.js';
 import { makeRng } from '../rng.js';
 import { generateAct } from '../data/acts.js';
+import { openEventModal } from './events.js';
 
 const TYPE_ICON = {
   battle: '⚔', elite: '☠', event: '❓', shop: '☉', rest: '🜉', boss: '👁',
@@ -177,37 +179,14 @@ function doRest(node) {
   renderMap();
 }
 
-// 사건은 단순 형태: 작은 보상 또는 시련
+// 사건 — 이벤트 모달에서 선택지를 골라 결과를 받는다 (data/events.js).
 function doEvent(node) {
   const run = state.run;
-  const rng = makeRng((node.encounter?.seed ?? 1) ^ Date.now());
-  const r = rng();
-  let msg = '';
-  if (r < 0.4) {
-    const g = 15 + Math.floor(rng() * 20);
-    run.gold = (run.gold || 0) + g;
-    msg = `발견 — 골드 +${g}`;
-  } else if (r < 0.7) {
-    for (const p of run.party) p.hp = Math.min(p.maxHp, p.hp + 8);
-    msg = '발견 — 체력 +8';
-  } else if (r < 0.9) {
-    const all = Object.values(CARDS).filter(c => c.rarity !== '유물');
-    const card = all[Math.floor(rng() * all.length)];
-    if (card) {
-      const target = run.party.find(p => p.id === run.selectedActorId) || run.party[0];
-      target.deck = target.deck || [];
-      target.deck.push(card.id);
-      msg = `발견 — ${target.name}이 "${card.name}" 습득`;
-    }
-  } else {
-    const cost = 6 + Math.floor(rng() * 6);
-    for (const p of run.party) p.hp = Math.max(1, p.hp - cost);
-    msg = `함정 — 체력 -${cost}`;
-  }
-  run.map.cleared[run.map.current] = true;
-  toast(msg, 2500);
-  saveAll();
-  renderMap();
+  openEventModal(node, () => {
+    run.map.cleared[run.map.current] = true;
+    saveAll();
+    renderMap();
+  });
 }
 
 function onRestQuick() {
@@ -327,6 +306,7 @@ export function openReward({ gold, cards, relic, isBoss, recruitCandidates }) {
       const port = el('div', { class: 'recruit-portrait' });
       const svg = getPortraitSVG(cid);
       if (svg) port.innerHTML = svg; else port.textContent = def.portrait || '?';
+      applyPortrait(cid, port);
       card.appendChild(port);
       const meta = el('div', { class: 'recruit-meta' });
       meta.innerHTML = `

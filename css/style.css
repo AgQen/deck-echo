@@ -356,6 +356,11 @@ button { background: none; border: none; color: inherit; font: inherit; cursor: 
 }
 .actor-portrait.has-svg { padding: 4px; }
 .actor-portrait svg { width: 100%; height: 100%; }
+/* assets/portraits/<id>.png 이 있으면 자동으로 적용 — SVG/이모지를 가린다. */
+.actor-portrait.has-png { padding: 0; background-size: cover; background-position: center; background-repeat: no-repeat; }
+.actor-portrait.has-png > * { display: none; }
+.cs-portrait.has-png, .recruit-portrait.has-png { background-size: cover; background-position: center; background-repeat: no-repeat; }
+.cs-portrait.has-png > *, .recruit-portrait.has-png > * { display: none; }
 .actor.selected .actor-portrait {
   border-color: var(--gold-warm);
   box-shadow: inset 0 0 12px rgba(0,0,0,0.6), 0 0 14px rgba(240,200,96,0.4);
@@ -1013,6 +1018,53 @@ blockquote.title-quote { margin: 0; }
 .help-body ul { margin: 6px 0; padding-left: 18px; }
 .help-body li { margin-bottom: 4px; color: var(--ink-1); }
 .help-body b { color: var(--ivory); }
+
+/* ===== 이벤트 모달 ===== */
+.event-body {
+  flex: 1; overflow-y: auto; padding: 18px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.event-text {
+  color: var(--ivory); font-family: Georgia, serif; line-height: 1.6;
+  font-size: 14px; padding: 12px 14px;
+  background: rgba(0,0,0,0.3); border-left: 3px solid rgba(216,169,87,0.5);
+  border-radius: 4px;
+  white-space: pre-wrap;
+}
+.event-choices { display: flex; flex-direction: column; gap: 8px; }
+.event-choice {
+  text-align: left; padding: 14px 16px;
+  background: linear-gradient(160deg, #1c1820, #14101a);
+  border: 1px solid rgba(216,169,87,0.3);
+  border-radius: 8px;
+  color: var(--ivory);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.event-choice:hover:not(:disabled) {
+  background: linear-gradient(160deg, #221c28, #181220);
+  border-color: rgba(216,169,87,0.6);
+}
+.event-choice.disabled,
+.event-choice:disabled {
+  opacity: 0.4; cursor: not-allowed;
+}
+.event-result {
+  color: var(--ivory); font-family: Georgia, serif; line-height: 1.6;
+  font-size: 14px; padding: 14px;
+  background: rgba(216,169,87,0.08);
+  border: 1px solid rgba(216,169,87,0.3);
+  border-radius: 6px;
+  font-style: italic;
+}
+.event-log {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 12px; color: var(--gold-warm);
+  padding-left: 8px;
+}
+.event-log-line::before { content: '· '; color: var(--ink-2); }
+.event-close { margin-top: 8px; }
 
 /* ===== 모바일 안전영역 ===== */
 .battle-bot, .map-actions, .title-foot {

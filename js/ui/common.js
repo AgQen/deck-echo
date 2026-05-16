@@ -1,5 +1,7 @@
 // 공통 UI 헬퍼.
 
+import { setSceneMusic } from '../assets.js';
+
 export function $(sel, root = document) { return root.querySelector(sel); }
 export function $$(sel, root = document) { return Array.from(root.querySelectorAll(sel)); }
 
@@ -21,6 +23,7 @@ export function el(tag, attrs = {}, children = []) {
 
 export function showScreen(name) {
   document.querySelectorAll('.screen').forEach(s => s.classList.toggle('active', s.dataset.screen === name));
+  setSceneMusic(name);
 }
 
 let modalOpen = null;

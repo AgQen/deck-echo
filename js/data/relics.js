@@ -108,6 +108,106 @@ export const RELICS = {
     desc: '전투 종료 시 체력 5 회복.',
     onBattleEnd: (run, player) => { player.hp = Math.min(player.maxHp, player.hp + 5); },
   },
+  // ─── 추가 일반 ───
+  ashGlove: {
+    id: 'ashGlove', name: '잿빛 장갑', rarity: '일반',
+    icon: '✋',
+    desc: '전투 시작 시 빛 +1, 단 첫 턴만.',
+    onBattleStart: (battle, player) => { player.light = Math.min(player.maxLight, player.light + 1); },
+  },
+  shornCloak: {
+    id: 'shornCloak', name: '닳은 망토', rarity: '일반',
+    icon: '🜐',
+    desc: '최대 정신력 +5.',
+    onAcquire: (run) => { for (const p of run.party) { p.maxSp += 5; p.sp += 5; } },
+  },
+  paleCandle: {
+    id: 'paleCandle', name: '창백한 초', rarity: '일반',
+    icon: '🕯',
+    desc: '획득 시 골드 +20.',
+    onAcquire: (run) => { run.gold = (run.gold || 0) + 20; },
+  },
+  brokenCompass: {
+    id: 'brokenCompass', name: '부서진 나침반', rarity: '일반',
+    icon: '🜨',
+    desc: '전투 시작 시 카드 +1장 드로우 (첫 턴만).',
+    onBattleStart: (battle, player) => {
+      try {
+        const hand = battle.hand[player.id] = battle.hand[player.id] || [];
+        if (hand.length >= 7) return;
+        if (battle.drawPile.length === 0 && battle.discardPile.length > 0) {
+          battle.drawPile = battle.rng.shuffle(battle.discardPile);
+          battle.discardPile = [];
+        }
+        if (battle.drawPile.length) hand.push(battle.drawPile.pop());
+      } catch {}
+    },
+  },
+  // ─── 추가 희귀 ───
+  shadowWeave: {
+    id: 'shadowWeave', name: '그림자 짜임', rarity: '희귀',
+    icon: '🜍',
+    desc: '카드를 슬롯에 둘 때마다 빛 +1 (턴당 1회).',
+    onCardPlaced: (battle, player, cardId) => {
+      if (!player._shadowWeaveTurn) player._shadowWeaveTurn = 0;
+      if (player._shadowWeaveTurn !== battle.turn) {
+        player._shadowWeaveTurn = battle.turn;
+        player.light = Math.min(player.maxLight, player.light + 1);
+      }
+    },
+  },
+  bloodCovenant: {
+    id: 'bloodCovenant', name: '피의 서약', rarity: '희귀',
+    icon: '🩸',
+    desc: '최대 체력 +15, 최대 정신력 -5.',
+    onAcquire: (run) => { for (const p of run.party) { p.maxHp += 15; p.hp += 15; p.maxSp = Math.max(5, p.maxSp - 5); p.sp = Math.min(p.maxSp, p.sp); } },
+  },
+  pyreThorn: {
+    id: 'pyreThorn', name: '잿더미의 가시', rarity: '희귀',
+    icon: '🜂',
+    desc: '전투 시작 시 모든 적에게 화상 1.',
+    onBattleStart: (battle, player) => {
+      for (const e of battle.enemies) {
+        if (!e.statuses) e.statuses = {};
+        e.statuses['화상'] = (e.statuses['화상'] || 0) + 1;
+      }
+    },
+  },
+  // ─── 추가 유물 ───
+  vesselOfStars: {
+    id: 'vesselOfStars', name: '별의 그릇', rarity: '유물',
+    icon: '✦',
+    desc: '막 클리어 시 최대 체력 +5 (영구).',
+    onActDone: (run, actNum) => {
+      for (const p of run.party) { p.maxHp += 5; p.hp += 5; }
+    },
+  },
+  echoStone: {
+    id: 'echoStone', name: '반향의 돌', rarity: '유물',
+    icon: '◐',
+    desc: '전투 종료 시 정신력 8 회복.',
+    onBattleEnd: (run, player) => { player.sp = Math.min(player.maxSp, player.sp + 8); },
+  },
+  silentName: {
+    id: 'silentName', name: '말하지 않는 이름', rarity: '유물',
+    icon: '⌽',
+    desc: '매 턴 시작 시 빛 +1.',
+    onTurnStart: (battle, player) => { player.light = Math.min(player.maxLight, player.light + 1); },
+  },
+  unwrittenPage: {
+    id: 'unwrittenPage', name: '쓰이지 않은 페이지', rarity: '유물',
+    icon: '✎',
+    desc: '매 턴 시작 시 카드 +1장 드로우.',
+    onTurnStart: (battle, player) => {
+      const hand = battle.hand[player.id] = battle.hand[player.id] || [];
+      if (hand.length >= 7) return;
+      if (battle.drawPile.length === 0 && battle.discardPile.length > 0) {
+        battle.drawPile = battle.rng.shuffle(battle.discardPile);
+        battle.discardPile = [];
+      }
+      if (battle.drawPile.length) hand.push(battle.drawPile.pop());
+    },
+  },
 };
 
 export function relicsByRarity(rarity) {

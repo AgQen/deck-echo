@@ -18,6 +18,7 @@ import { xpToNext, LEVEL_CAP, LEVEL_THRESHOLDS } from '../data/progression.js';
 import { RELICS } from '../data/relics.js';
 import { STATUSES as STATUS_DEFS } from '../data/statuses.js';
 import { getPortraitSVG } from '../data/portraits.js';
+import { applyPortrait } from '../assets.js';
 
 let selectedActorId = null;
 let selectedEnemyId = null;
@@ -128,6 +129,7 @@ function renderActorRow(sel, actors, selId, onSelect) {
     } else {
       portrait.textContent = a.portrait || '?';
     }
+    applyPortrait(a.id, portrait);
     div.appendChild(portrait);
 
     div.appendChild(el('div', { class: 'actor-name', text: a.name }));

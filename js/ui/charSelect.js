@@ -3,6 +3,7 @@ import { state, startNewRun } from '../state.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CARDS } from '../data/cards.js';
 import { getPortraitSVG } from '../data/portraits.js';
+import { applyPortrait } from '../assets.js';
 import { saveAll } from '../storage.js';
 import { renderMap } from './map.js';
 
@@ -48,6 +49,7 @@ function renderList() {
     const svg = getPortraitSVG(id);
     if (svg) portraitWrap.innerHTML = svg;
     else portraitWrap.textContent = def.portrait || '?';
+    applyPortrait(id, portraitWrap);
     card.appendChild(portraitWrap);
 
     const meta = el('div', { class: 'cs-meta' });
